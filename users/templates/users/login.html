@@ -1,0 +1,51 @@
+{% extends 'recipes/base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid" style="min-height: calc(100vh - var(--navbar-height, 56px)); display: flex; margin: 0; padding: 0; background-color: #fff3e0;">
+    <!-- Left Section -->
+    <div class="left-section" style="width: 65%; padding: 20px; background-color: #fff3e0; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; min-height: 100%;">
+        <div class="toolbar" style="width: 100%; background-color: #fff3e0; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <nav style="display: flex;">
+            </nav>
+        </div>
+
+        <div class="visual-content" style="margin-top: 0; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start;">
+            <h2 style="font-size: 3.5em; color: #ff6347; margin-bottom: 10px; margin-top: 20px;">Welcome Back!</h2>
+            <p style="font-size: 1.2em; color: #555; margin-bottom: 30px; line-height: 1.6;">
+                Ready to continue your culinary journey?
+                Log in to access your personalized recipes and track your cooking progress!
+            </p>
+            <div class="images" style="display: flex; gap: 20px; justify-content: center;">
+                <img src="https://t4.ftcdn.net/jpg/02/54/93/61/360_F_254936166_5MFxlGv7PNPw4VmpuNNQxlU0K2D4f7Ya.jpg" alt="Cooking Image 1" style="max-width: 45%; height: auto; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
+                <img src="https://t4.ftcdn.net/jpg/03/32/75/39/360_F_332753934_tBacXEgxnVplFBRyKbCif49jh0Wz89ns.jpg" alt="Cooking Image 2" style="max-width: 45%; height: auto; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Section -->
+    <div class="right-section" style="width: 35%; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px 20px; position: relative; min-height: 100%; overflow-y: auto;">
+        <div class="form-container" style="width: 100%; max-width: 300px; display: flex; flex-direction: column;">
+            <h2 style="text-align: center; color: #ff6347; margin-bottom: 20px;">Login</h2>
+            <form method="POST" style="width: 100%;">
+                {% csrf_token %}
+                <fieldset style="border: none; padding: 0; margin: 0;">
+                    <div style="display: none;">
+                        <legend>Login</legend>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        {{ form|crispy }}
+                    </div>
+                </fieldset>
+                <button type="submit" class="btn btn-primary btn-block" style="width: 100%; padding: 10px; background-color: #ff6347; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; margin-top: 10px;">Login</button>
+            </form>
+            <div class="switch" style="text-align: center; margin-top: 10px; font-size: 0.9em; color: #555;">
+                Don't have an account? <a href="{% url 'user-register' %}" style="color: #ff6347; text-decoration: none;">Register here</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock content %}

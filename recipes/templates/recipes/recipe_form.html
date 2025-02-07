@@ -1,0 +1,46 @@
+{% extends 'recipes/base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 40px 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);">
+        <!-- Decorative Header -->
+        <div style="text-align: center; margin-bottom: 25px;">
+            <h2 style="color: #ff6347; font-size: 2em; margin-bottom: 8px; font-weight: bold;">Create Recipe</h2>
+            <p style="color: #666; font-size: 0.9em;">Share your culinary masterpiece</p>
+            <div style="width: 40px; height: 3px; background-color: #ff6347; margin: 15px auto;"></div>
+        </div>
+
+        <div class="container">
+            <form method="Post">
+                {% csrf_token %}
+                <fieldset class="form-group" style="background-color: #fff; padding: 15px; border-radius: 10px;">
+                    {{ form|crispy }}
+                </fieldset>
+                
+                <!-- Action Buttons -->
+                <div class="form-group py-3" style="text-align: center;">
+                    <input type="submit" value="Save Recipe" 
+                           style="padding: 8px 30px; background-color: #ff6347; color: white; border: none; border-radius: 20px; font-size: 1em; cursor: pointer; font-weight: bold; transition: transform 0.2s ease; margin-right: 10px;">
+                    
+                    <a href="{% url 'recipes-home' %}" 
+                       style="display: inline-block; padding: 8px 30px; background-color: transparent; color: #ff6347; border: 2px solid #ff6347; border-radius: 20px; text-decoration: none; font-weight: bold; transition: all 0.2s ease;">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+
+            <!-- Tips Section -->
+            <div style="margin-top: 20px; padding: 15px; background-color: #fff3e0; border-radius: 8px; font-size: 0.9em;">
+                <h4 style="color: #ff6347; margin-bottom: 10px; font-size: 1em;">Recipe Tips:</h4>
+                <ul style="color: #666; list-style-type: none; padding: 0; margin: 0;">
+                    <li style="margin-bottom: 5px;">✨ Be specific with measurements</li>
+                    <li style="margin-bottom: 5px;">📝 Clear step-by-step instructions</li>
+                    <li>⏰ Include prep & cooking times</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

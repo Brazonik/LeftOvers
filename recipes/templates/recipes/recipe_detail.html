@@ -1,0 +1,76 @@
+{% extends 'recipes/base.html' %}
+{% block content %}
+
+<div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 40px 20px;">
+    <div style="max-width: 800px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);">
+        <!-- Recipe Header -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #ff6347; font-size: 2.5em; margin-bottom: 10px;">{{object.title}}</h1>
+            <div style="color: #666; margin-bottom: 15px;">
+                <span style="margin-right: 20px;">By {{object.author}}</span>
+                <span>{{object.updated_at |date:"F d, Y"}}</span>
+            </div>
+            <div style="width: 50px; height: 3px; background-color: #ff6347; margin: 0 auto;"></div>
+        </div>
+
+        <!-- Recipe Image Placeholder -->
+        <div style="width: 100%; height: 300px; background-color: #f8f8f8; border-radius: 10px; margin-bottom: 30px; overflow: hidden;">
+            <img src="https://via.placeholder.com/800x300" alt="Recipe" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+
+        <!-- Recipe Description -->
+        <div style="background-color: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+            <h3 style="color: #ff6347; margin-bottom: 15px; font-size: 1.3em;">Description</h3>
+            <p style="color: #555; line-height: 1.6; margin: 0;">{{object.description}}</p>
+        </div>
+
+        {% if user.is_authenticated %}
+        <div style="text-align: center; margin-bottom: 20px;">
+            <form action="{% url 'recipe-save' object.id %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" style="padding: 10px 30px; {% if is_saved %}background-color: white; color: #ff6347; border: 2px solid #ff6347;{% else %}background-color: #ff6347; color: white; border: none;{% endif %} border-radius: 25px; font-weight: bold; transition: all 0.2s ease; cursor: pointer;">
+                    {% if is_saved %}
+                        Unsave Recipe
+                    {% else %}
+                        Save Recipe
+                    {% endif %}
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        {% if object.author == user or user.is_staff %}
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <a href="{% url 'recipes-update' object.id %}" 
+               style="padding: 10px 30px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 25px; font-weight: bold; transition: transform 0.2s ease;">
+                Update Recipe
+            </a>
+            <a href="{% url 'recipes-delete' object.id %}" 
+               style="padding: 10px 30px; background-color: white; color: #ff6347; text-decoration: none; border: 2px solid #ff6347; border-radius: 25px; font-weight: bold; transition: all 0.2s ease;">
+                Delete Recipe
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Recipe Details Box -->
+        <div style="margin-top: 30px; padding: 20px; background-color: #f8f8f8; border-radius: 10px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;">
+                <div>
+                    <div style="font-size: 0.9em; color: #666;">Recipe ID</div>
+                    <div style="font-size: 1.2em; color: #ff6347; font-weight: bold;">#{{ object.id }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #666;">Created</div>
+                    <div style="font-size: 1.2em; color: #ff6347; font-weight: bold;">{{object.updated_at |date:"M d"}}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #666;">Author</div>
+                    <div style="font-size: 1.2em; color: #ff6347; font-weight: bold;">{{object.author}}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

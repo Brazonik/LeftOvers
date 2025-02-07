@@ -1,0 +1,57 @@
+{% extends 'recipes/base.html' %}
+{% block content %}
+
+<style>
+    .full-width-content {
+        padding: 0 !important;
+    }
+
+    body {
+        background-color: #fff3e0 !important;
+        font-family: 'Poppins', sans-serif !important;
+    }
+</style>
+
+<!-- Filter Section -->
+<div style="position: fixed; top: 120px; left: 20px; width: 200px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); padding: 15px; z-index: 999; text-align: center;">
+    <h3 style="font-size: 1em; color: #ff6347; margin-bottom: 10px; font-weight: bold;">Filter Recipes</h3>
+    
+    <form method="GET">
+        <label for="like" style="font-size: 0.9em; display: block; margin: 5px 0; color: #555;">Like</label>
+        <select id="like" name="like" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 0.9em;">
+            {% for value, label in filter_options %}
+                <option value="{{ value }}" {% if value == selected_like %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="dislike" style="font-size: 0.9em; display: block; margin: 5px 0; color: #555;">Dislike</label>
+        <select id="dislike" name="dislike" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 0.9em;">
+            <option value="all">No Restrictions</option>
+            {% for value, label in filter_options %}
+                {% if value != 'all' %}
+                    <option value="{{ value }}" {% if value == selected_dislike %}selected{% endif %}>{{ label }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+
+        <button type="submit" style="width: 100%; padding: 8px; background-color: #ff6347; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Apply Filters</button>
+    </form>
+</div>
+
+<!-- Recipes Container -->
+<div style="margin-left: 270px; margin-right: 50px; margin-top: 80px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+    {% for recipe in recipes %}
+        <div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+            <div style="width: 100%; height: 150px; background-image: url('https://via.placeholder.com/400x150'); background-size: cover; background-position: center;"></div>
+            <div style="padding: 15px;">
+                <div style="font-size: 1.2em; font-weight: bold; color: #ff6347; margin-bottom: 10px;">{{recipe.title}}</div>
+                <div style="font-size: 0.9em; color: #777; margin-bottom: 5px;">By {{recipe.author}}</div>
+                <div style="color: #555; margin-bottom: 10px; line-height: 1.4;">{{recipe.description}}</div>
+                <div style="font-size: 0.8em; color: #888; margin-bottom: 10px;">{{recipe.updated_at |date:"F d, Y"}}</div>
+                <a href="{% url 'recipes-detail' recipe.pk %}" class="text-decoration-none" style="color: #ff6347; font-weight: bold;">View Recipe →</a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% endblock content %}

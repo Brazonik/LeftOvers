@@ -1,0 +1,153 @@
+{% extends "recipes/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Ingredient Tracking</h2>
+
+    <!-- Display Tracked Ingredients -->
+    {% if tracked_ingredients %}
+        <div class="shopping-list">
+            {% for ingredient in tracked_ingredients %}
+                <div class="ingredient">
+                    <div>
+                        <div class="name">{{ ingredient.ingredient_name }}</div>
+                        <div class="details">
+                            Quantity: {{ ingredient.quantity|default:"N/A" }}
+                        </div>
+                        {% if ingredient.expiration_date %}
+                            <div class="expiry">Expires: {{ ingredient.expiration_date }}</div>
+                        {% else %}
+                            <div class="expiry">No Expiration Date</div>
+                        {% endif %}
+                    </div>
+                    <form action="{% url 'remove_tracked_ingredient' ingredient.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No ingredients being tracked.</p>
+    {% endif %}
+
+    <!-- Form to Add a New Ingredient -->
+    <h3 class="mt-4">Add a New Ingredient</h3>
+    <form id="trackIngredientForm">
+        {% csrf_token %}
+        <input type="text" id="ingredientName" placeholder="Ingredient Name" required>
+        <input type="text" id="quantity" placeholder="Quantity (optional)">
+        <input type="date" id="expirationDate" placeholder="Expiration Date (optional)">
+        <button type="submit" class="btn btn-primary">Track Ingredient</button>
+    </form>
+
+    <hr>
+
+    <!-- Spoonacular API Integration -->
+    <h3>Find Recipes Based on Your Ingredients</h3>
+    <button id="fetchRecipesByIngredients" class="btn btn-success">Search Recipes</button>
+    <div id="recipesList"></div>
+
+</div>
+
+<script>
+    // Ingredient Tracking Form Submission
+    document.getElementById("trackIngredientForm").onsubmit = function(event) {
+        event.preventDefault();
+
+        let name = document.getElementById("ingredientName").value;
+        let quantity = document.getElementById("quantity").value;
+        let expiration = document.getElementById("expirationDate").value;
+
+        fetch("{% url 'track_ingredient' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken()
+            },
+            body: JSON.stringify({
+                ingredient_name: name,
+                quantity: quantity,
+                expiration_date: expiration
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("Ingredient tracked successfully!");
+                location.reload();
+            } else {
+                alert("Error: " + data.error);
+            }
+        })
+        .catch(error => console.error("Fetch error:", error));
+    };
+
+    // Fetch recipes using Spoonacular API
+    document.getElementById("fetchRecipesByIngredients").addEventListener("click", function() {
+        console.log("Fetching recipes...");
+        
+        let recipesList = document.getElementById("recipesList");
+        recipesList.innerHTML = "<p>Searching for recipes...</p>";
+    
+        fetch("{% url 'fetch_recipes_by_ingredients' %}")
+        .then(response => response.json())
+        .then(data => {
+            console.log("API Response:", data);
+            recipesList.innerHTML = "";
+    
+            if (data.recipes && data.recipes.length > 0) {
+                data.recipes.forEach(recipe => {
+                    let recipeElement = document.createElement("div");
+                    recipeElement.className = "recipe-card";
+                    
+                    // Create ingredient lists
+                    let usedIngredientsList = recipe.used_ingredients.map(ing => `<li>${ing}</li>`).join("");
+                    let missingIngredientsList = recipe.missing_ingredients.map(ing => `<li>${ing}</li>`).join("");
+                    let unusedTrackedList = recipe.unused_tracked_ingredients.map(ing => `<li>${ing}</li>`).join("");
+    
+                    recipeElement.innerHTML = `
+                        <div class="recipe">
+                            <h4>${recipe.title}</h4>
+                            <div class="ingredient-usage-stats">
+                                <h5>Ingredients Usage: ${recipe.ingredients_usage_percentage}%</h5>
+                                <p>Using ${recipe.total_ingredients_used} out of ${recipe.total_tracked_ingredients} tracked ingredients</p>
+                            </div>
+                            <img src="${recipe.image}" alt="${recipe.title}" width="200">
+                            
+                            <div class="recipe-details">
+                                <div class="ingredients-list">
+                                    <div class="used-ingredients">
+                                        <h6>Used Ingredients:</h6>
+                                        <ul>${usedIngredientsList}</ul>
+                                    </div>
+                                    <div class="missing-ingredients">
+                                        <h6>Missing Ingredients:</h6>
+                                        <ul>${missingIngredientsList}</ul>
+                                    </div>
+                                    <div class="unused-tracked">
+                                        <h6>Unused Tracked Ingredients:</h6>
+                                        <ul>${unusedTrackedList}</ul>
+                                    </div>
+                                </div>
+                                
+                                <!-- Rest of the recipe details... -->
+                            </div>
+                        </div>
+                        <hr>
+                    `;
+                    recipesList.appendChild(recipeElement);
+                });
+            } else {
+                recipesList.innerHTML = "<p>No matching recipes found.</p>";
+            }
+        })
+        .catch(error => console.error("Error fetching recipes:", error));
+    });
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+</script>
+
+{% endblock %}

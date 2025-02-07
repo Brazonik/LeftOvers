@@ -1,0 +1,109 @@
+[
+  {
+    "title": "Korean Beef Rice Bowl",
+    "ready_in_minutes": 45,
+    "servings": 4,
+    "source_url": "https://www.foodista.com/recipe/7LRXNC6T/korean-beef-rice-bowl",
+    "spoonacular_url": "https://spoonacular.com/korean-beef-rice-bowl-649030",
+    "image": "https://img.spoonacular.com/recipes/649030-556x370.jpg",
+    "ingredients": [
+      {
+        "name": "fat-trimmed beef flank steak",
+        "amount": 1.0,
+        "unit": "pound",
+        "original": "1 pound fat-trimmed beef flank steak"
+      },
+      {
+        "name": "korean marinade",
+        "amount": 4.0,
+        "unit": "servings",
+        "original": "Korean Marinade (see recipe)"
+      },
+      {
+        "name": "green beans",
+        "amount": 0.75,
+        "unit": "pound",
+        "original": "3/4 pound green beans rinsed"
+      },
+      {
+        "name": "carrot",
+        "amount": 0.25,
+        "unit": "lb",
+        "original": "1 carrot - (1/4 lb) peeled"
+      },
+      {
+        "name": "rice vinegar",
+        "amount": 2.0,
+        "unit": "tablespoons",
+        "original": "2 tablespoons rice vinegar"
+      },
+      {
+        "name": "asian sesame oil",
+        "amount": 1.0,
+        "unit": "tablespoon",
+        "original": "1 tablespoon Asian (toasted) sesame oil"
+      },
+      {
+        "name": "sugar",
+        "amount": 2.0,
+        "unit": "teaspoons",
+        "original": "2 teaspoons sugar"
+      },
+      {
+        "name": "salt",
+        "amount": 4.0,
+        "unit": "servings",
+        "original": "Salt to taste"
+      },
+      {
+        "name": "salad oil",
+        "amount": 1.0,
+        "unit": "tablespoon",
+        "original": "1 tablespoon salad oil"
+      },
+      {
+        "name": "fat-skimmed beef broth",
+        "amount": 0.5,
+        "unit": "cup",
+        "original": "1/2 cup fat-skimmed beef broth"
+      },
+      {
+        "name": "rice",
+        "amount": 6.0,
+        "unit": "cups",
+        "original": "6 cups Hot Cooked Rice (see recipe)"
+      },
+      {
+        "name": "thinly- green onions",
+        "amount": 0.25,
+        "unit": "cup",
+        "original": "1/4 cup thinly-sliced green onions"
+      },
+      {
+        "name": "sesame seed",
+        "amount": 1.0,
+        "unit": "tablespoon",
+        "original": "1 tablespoon toasted sesame seed"
+      }
+    ],
+    "instructions": "Rinse beef, pat dry, and cut across the grain into 1/8-inch-thick slices about 3 inches long. In a small bowl, mix beef with 1/4 cup Korean Marinade.\nRemove and discard bean stem ends and strings. Cut beans diagonally in 3-inch lengths. Cut carrot into matchstick-size pieces about 3 inches long.\nIn a 14-inch wok or 12-inch frying pan over high heat, mix 1/2 cup water, beans, and carrot. Cover and stir occasionally just until tender to bite, about 3 minutes. Drain; immerse in cold water. Drain when cool. In a bowl, mix with vinegar, sesame oil, sugar, and salt to taste.\nPlace wok over high heat; when hot, add salad oil. Add beef with liquid in bowl; stir until meat is no longer pink, about 2 minutes. Add remaining marinade and broth to pan; stir until boiling.\nScoop rice into bowls; add beef and sauce, then vegetables and seasonings. Sprinkle with onions and sesame seed.\nThis recipe yields 4 servings.\nComments: If you can't find toasted sesame seed, stir regular sesame seed in a frying pan over low heat until golden, 1 minute.",
+    "nutrition": {
+      "calories": {
+        "amount": 669.24,
+        "unit": "kcal"
+      },
+      "protein": {
+        "amount": 31.69,
+        "unit": "g"
+      },
+      "fat": {
+        "amount": 25.01,
+        "unit": "g"
+      },
+      "carbohydrates": {
+        "amount": 78.7,
+        "unit": "g"
+      }
+    }
+  }
+]

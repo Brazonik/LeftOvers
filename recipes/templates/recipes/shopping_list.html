@@ -1,0 +1,177 @@
+{% extends "recipes/base.html" %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <!-- Add Item Form -->
+    <div style="background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;">
+        <h3 style="margin-bottom: 15px; color: #333;">Add New Item</h3>
+        <form id="addItemForm">
+            {% csrf_token %}
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="ingredientName" placeholder="Ingredient Name" required
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="quantity" placeholder="Quantity (e.g., 2 carrots)" required
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <input type="date" id="expirationDate"
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <button type="submit" 
+                style="background-color: #ff6347; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                Add Item
+            </button>
+        </form>
+    </div>
+
+    <!-- Shopping List Container -->
+    <div id="shopping-list-container">
+        {% if items %}
+            {% for item in items %}
+            <div id="item-{{ item.id }}" style="background-color: white; margin-bottom: 15px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h3 style="color: #ff6347; margin: 0; font-size: 1.3em;">{{ item.ingredient_name }}</h3>
+                        <p style="color: #666; margin: 5px 0;">{{ item.quantity }}</p>
+                        {% if item.expiration_date %}
+                        <p style="color: #888; font-size: 0.9em; margin-top: 10px;">Exp: {{ item.expiration_date }}</p>
+                        {% endif %}
+                    </div>
+                    <button onclick="removeItem({{ item.id }})" 
+                        style="background-color: #fff; color: #ff6347; border: 1px solid #ff6347; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                        Remove
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div id="empty-message" style="text-align: center; color: #666; padding: 20px;">
+                Your shopping list is empty.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Function to add new item to DOM
+function addItemToList(item) {
+    const container = document.getElementById('shopping-list-container');
+    const emptyMessage = document.getElementById('empty-message');
+    if (emptyMessage) {
+        emptyMessage.remove();
+    }
+
+    const itemElement = document.createElement('div');
+    itemElement.id = `item-${item.id}`;
+    itemElement.style = "background-color: white; margin-bottom: 15px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative;";
+    
+    itemElement.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h3 style="color: #ff6347; margin: 0; font-size: 1.3em;">${item.ingredient}</h3>
+                <p style="color: #666; margin: 5px 0;">${item.quantity}</p>
+                ${item.expiration_date ? `<p style="color: #888; font-size: 0.9em; margin-top: 10px;">Exp: ${item.expiration_date}</p>` : ''}
+            </div>
+            <button onclick="removeItem(${item.id})" 
+                style="background-color: #fff; color: #ff6347; border: 1px solid #ff6347; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                Remove
+            </button>
+        </div>
+    `;
+    
+    container.insertBefore(itemElement, container.firstChild);
+}
+
+// Add item form submission
+document.getElementById("addItemForm").onsubmit = async function(event) {
+    event.preventDefault();
+
+    const name = document.getElementById("ingredientName").value;
+    const quantity = document.getElementById("quantity").value;
+    const expiration = document.getElementById("expirationDate").value;
+
+    try {
+        const response = await fetch("{% url 'add_item' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                ingredient_name: name,
+                quantity: quantity,
+                expiration_date: expiration || null
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            // Add new item to DOM
+            addItemToList(data);
+            
+            // Clear form
+            document.getElementById("ingredientName").value = '';
+            document.getElementById("quantity").value = '';
+            document.getElementById("expirationDate").value = '';
+        } else {
+            alert(data.error || "Failed to add item");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Failed to add item. Please check the console for details.");
+    }
+};
+
+// Remove item function
+async function removeItem(itemId) {
+    try {
+        const response = await fetch(`/remove-item/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            // Remove the item from DOM
+            const itemElement = document.getElementById(`item-${itemId}`);
+            if (itemElement) {
+                itemElement.remove();
+                
+                // Check if list is empty
+                const container = document.getElementById('shopping-list-container');
+                const remainingItems = container.querySelectorAll('[id^="item-"]');
+                if (remainingItems.length === 0) {
+                    container.innerHTML = `
+                        <div id="empty-message" style="text-align: center; color: #666; padding: 20px;">
+                            Your shopping list is empty.
+                        </div>`;
+                }
+            }
+        } else {
+            // Handle 404 and other errors
+            if (response.status === 404) {
+                alert('This item has already been removed');
+                // Refresh the page to sync with server state
+                window.location.reload();
+            } else {
+                throw new Error(data.error || 'Failed to remove item');
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to remove item: ' + error.message);
+    }
+}
+</script>
+{% endblock %}
