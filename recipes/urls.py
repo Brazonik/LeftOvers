@@ -21,8 +21,6 @@ urlpatterns = [
 
     path('scrape-recipes/', views.scrape_recipes, name="scrape_recipes"),  
     path('ingredient-tracking/', views.ingredient_tracking, name="ingredient_tracking"),
-    path('fetch-spoonacular/', views.fetch_recipes_by_ingredients, name="fetch_spoonacular_recipes"),
-    path('fetch-recipes-by-ingredients/', views.fetch_recipes_by_ingredients, name="fetch_recipes_by_ingredients"),
 
 
 ]

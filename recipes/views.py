@@ -25,6 +25,8 @@ def home(request):
     }
     return render(request, "recipes/home.html", context)
 
+
+
 class RecipeListView(ListView):
     model = models.Recipe
     template_name = 'recipes/home.html'
@@ -226,14 +228,12 @@ def track_ingredient(request):
         data = json.loads(request.body)
         ingredient_name = data.get("ingredient_name", "").lower().strip()
         
-        # Basic ingredient name cleaning
         ingredient_name = ingredient_name.replace(',', '')
         ingredient_name = ingredient_name.replace('fresh', '')
         ingredient_name = ingredient_name.replace('frozen', '')
         ingredient_name = ingredient_name.replace('raw', '')
         ingredient_name = ingredient_name.strip()
         
-        # Check if ingredient already exists
         existing = TrackedIngredient.objects.filter(
             user=request.user, 
             ingredient_name=ingredient_name
@@ -305,22 +305,37 @@ def match_ingredients_with_recipes(request):
 
 @login_required
 def scrape_recipes(request):
-    """Web scraper to fetch recipes from an external site."""
-    url = "https://www.bbcgoodfood.com/recipes"  
+    """
+    Scrapes recipes based on the user's tracked ingredients.
+    """
+    from recipes.scraper import scrape_recipes_for_user
+
+    tracked_ingredients = TrackedIngredient.objects.filter(user=request.user)
+    
+    if not tracked_ingredients.exists():
+        return render(request, 'recipes/ingredient_tracking.html', {
+            'tracked_ingredients': tracked_ingredients,
+            'recipes': [],
+            'error_message': "You haven't tracked any ingredients yet."
+        })
 
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        scraped_recipes = scrape_recipes_for_user(request.user)
 
-        recipes = []
-        for item in soup.select(".standard-card-new__article-title"):  
-            recipes.append(item.get_text(strip=True))
-
-        return JsonResponse({"success": True, "recipes": recipes})
-
+        return render(request, 'recipes/ingredient_tracking.html', {
+            'tracked_ingredients': tracked_ingredients,
+            'recipes': scraped_recipes,
+            'success_message': f"Found {len(scraped_recipes)} recipes!"
+        })
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+        print(f"Error scraping recipes: {str(e)}")
+        return render(request, 'recipes/ingredient_tracking.html', {
+            'tracked_ingredients': tracked_ingredients,
+            'recipes': [],
+            'error_message': "Error finding recipes. Please try again."
+        })
+
+
     
 @login_required
 def ingredient_tracking(request):
@@ -329,122 +344,42 @@ def ingredient_tracking(request):
     """
     tracked_ingredients = TrackedIngredient.objects.filter(user=request.user).order_by('expiration_date')
 
-    # Fetch scraped recipes that match the user's tracked ingredients
     user_ingredient_names = set(item.ingredient_name.lower() for item in tracked_ingredients)
 
     matched_recipes = []
     for recipe in ScrapedRecipe.objects.all():
         recipe_ingredients = set(ingredient.name.lower() for ingredient in recipe.ingredients.all())
 
-        if user_ingredient_names.intersection(recipe_ingredients):
+        used_ingredients = list(user_ingredient_names.intersection(recipe_ingredients))
+        missing_ingredients = list(recipe_ingredients - user_ingredient_names)
+
+        if not missing_ingredients:
+
+            total_tracked = len(user_ingredient_names)
+            used_count = len(used_ingredients)
+            usage_percentage = round((used_count / total_tracked) * 100, 1) if total_tracked > 0 else 0
+
             matched_recipes.append({
                 "title": recipe.title,
                 "url": recipe.url,
-                "matching_ingredients": list(user_ingredient_names.intersection(recipe_ingredients)),
+                "used_ingredients": used_ingredients,
+                "missing_ingredients": missing_ingredients,
+                "usage_percentage": usage_percentage,
+                "nutrition": recipe.nutrition if hasattr(recipe, "nutrition") and recipe.nutrition else {},
+                "readyInMinutes": getattr(recipe, "readyInMinutes", "N/A"),
+                "servings": getattr(recipe, "servings", "N/A"),
             })
+
+    matched_recipes.sort(key=lambda x: x['usage_percentage'], reverse=True)
+
+    if not matched_recipes:
+        return render(request, "recipes/ingredient_tracking.html", {
+            "tracked_ingredients": tracked_ingredients,
+            "recipes": [],
+            "error_message": "No recipes found that fully match your ingredients. Try adding more!"
+        })
 
     return render(request, "recipes/ingredient_tracking.html", {
         "tracked_ingredients": tracked_ingredients,
-        "matched_recipes": matched_recipes
+        "recipes": matched_recipes
     })
-
-
-
-@login_required
-def fetch_recipes_by_ingredients(request):
-    API_KEY = "5fd7a331048d4bd49ff39d237b270e91"
-    base_url = "https://api.spoonacular.com/recipes/findByIngredients"
-
-    # Get all user's tracked ingredients
-    user_ingredients = TrackedIngredient.objects.filter(user=request.user)
-    
-    if not user_ingredients.exists():
-        return JsonResponse({'error': 'No ingredients tracked yet!'}, status=400)
-
-    ingredient_list = [ingredient.ingredient_name.strip().lower() for ingredient in user_ingredients]
-    ingredients_query = ',+'.join(ingredient_list)
-
-    print(f"Searching with these ingredients: {ingredient_list}")  # Debug log
-
-    params = {
-        'apiKey': API_KEY,
-        'ingredients': ingredients_query,
-        'number': 2,  # Increased number of recipes
-        'ranking': 1,
-        'ignorePantry': True,
-        'limitLicense': False
-    }
-
-    try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()
-        
-        data = response.json()
-        print(f"Found {len(data)} initial recipes")  # Debug log
-        
-        recipes = []
-
-        for recipe in data:
-            used_ingredients = [ing['name'].lower() for ing in recipe.get('usedIngredients', [])]
-            missed_ingredients = [ing['name'].lower() for ing in recipe.get('missedIngredients', [])]
-            
-            used_count = len(used_ingredients)
-            total_tracked = len(ingredient_list)
-            usage_percentage = (used_count / total_tracked) * 100
-
-            print(f"\nAnalyzing recipe: {recipe['title']}")  # Debug log
-            print(f"Uses {used_count} out of {total_tracked} ingredients ({usage_percentage:.1f}%)")
-            print(f"Used ingredients: {used_ingredients}")
-            
-            # Lowered the threshold to 25%
-            if usage_percentage >= 25:  # Changed from 50% to 25%
-                recipe_id = recipe['id']
-
-                # Get detailed recipe info
-                nutrition_url = f"https://api.spoonacular.com/recipes/{recipe_id}/information"
-                nutrition_params = {'apiKey': API_KEY, 'includeNutrition': 'true'}
-                nutrition_response = requests.get(nutrition_url, params=nutrition_params)
-                nutrition_data = nutrition_response.json()
-
-                recipes.append({
-                    'id': recipe['id'],
-                    'title': recipe['title'],
-                    'image': recipe.get('image', ''),
-                    'source_url': nutrition_data.get('sourceUrl', ''),
-                    'used_ingredients': used_ingredients,
-                    'missing_ingredients': missed_ingredients,
-                    'unused_tracked_ingredients': list(set(ingredient_list) - set(used_ingredients)),
-                    'ingredients_usage_percentage': round(usage_percentage, 1),
-                    'total_ingredients_used': used_count,
-                    'total_tracked_ingredients': total_tracked,
-                    'nutrition': {
-                        nutrient['name']: {
-                            'amount': nutrient['amount'],
-                            'unit': nutrient['unit']
-                        }
-                        for nutrient in nutrition_data.get('nutrition', {}).get('nutrients', [])
-                        if nutrient['name'] in ['Calories', 'Protein', 'Fat', 'Carbohydrates']
-                    },
-                    'instructions': nutrition_data.get('instructions', ''),
-                    'readyInMinutes': nutrition_data.get('readyInMinutes', 0),
-                    'servings': nutrition_data.get('servings', 0)
-                })
-
-        # Sort recipes by percentage of ingredients used
-        recipes.sort(key=lambda x: x['ingredients_usage_percentage'], reverse=True)
-
-        print(f"Final number of recipes after filtering: {len(recipes)}")  # Debug log
-
-        return JsonResponse({
-            'recipes': recipes,
-            'debug_info': {
-                'tracked_ingredients': ingredient_list,
-                'total_ingredients': len(ingredient_list),
-                'recipes_found': len(recipes),
-                'search_query': ingredients_query  # Added to see what's being sent to API
-            }
-        })
-
-    except Exception as e:
-        print(f"Error in recipe fetching: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)

@@ -1,91 +1,75 @@
 import requests
-import json
+from bs4 import BeautifulSoup
+from datetime import datetime
+from recipes.models import ScrapedRecipe, RecipeIngredient
+import os
+import django
 
-def get_detailed_recipes():
-    try:
-        API_KEY = "5fd7a331048d4bd49ff39d237b270e91"  
-        
-        base_url = "https://api.spoonacular.com/recipes"
-        random_params = {
-            'apiKey': API_KEY,
-            'number': 1,
-            'tags': 'dinner'
-        }
-        
-        print("Fetching recipes...")
-        response = requests.get(f"{base_url}/random", params=random_params)
-        response.raise_for_status()
-        
-        recipes = []
-        initial_data = response.json()
-        
-        for recipe in initial_data['recipes']:
-            recipe_id = recipe['id']
-            
-            detail_params = {
-                'apiKey': API_KEY,
-                'includeNutrition': 'true'
-            }
-            
-            print(f"\nGetting details for: {recipe['title']}")
-            recipe_response = requests.get(f"{base_url}/{recipe_id}/information", params=detail_params)
-            recipe_data = recipe_response.json()
-            
-            ingredients = []
-            for ingredient in recipe_data.get('extendedIngredients', []):
-                ingredients.append({
-                    'name': ingredient.get('name', ''),
-                    'amount': ingredient.get('amount', 0),
-                    'unit': ingredient.get('unit', ''),
-                    'original': ingredient.get('original', '')
-                })
+# Set up Django environment
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+django.setup()
 
-            nutrition = recipe_data.get('nutrition', {})
-            nutrients = {}
-            if 'nutrients' in nutrition:
-                for nutrient in nutrition['nutrients']:
-                    nutrients[nutrient['name']] = {
-                        'amount': nutrient['amount'],
-                        'unit': nutrient['unit']
-                    }
-            
-            detailed_recipe = {
-                'title': recipe_data['title'],
-                'ready_in_minutes': recipe_data.get('readyInMinutes', 0),
-                'servings': recipe_data.get('servings', 0),
-                'source_url': recipe_data.get('sourceUrl', ''),  
-                'spoonacular_url': recipe_data.get('spoonacularSourceUrl', ''), 
-                'image': recipe_data.get('image', ''),
-                'ingredients': ingredients,
-                'instructions': recipe_data.get('instructions', ''),
-                'nutrition': {
-                    'calories': nutrients.get('Calories', {'amount': 0, 'unit': 'kcal'}),
-                    'protein': nutrients.get('Protein', {'amount': 0, 'unit': 'g'}),
-                    'fat': nutrients.get('Fat', {'amount': 0, 'unit': 'g'}),
-                    'carbohydrates': nutrients.get('Carbohydrates', {'amount': 0, 'unit': 'g'})
-                }
-            }
-            
-            recipes.append(detailed_recipe)
-            
-            print(f"\nRecipe: {detailed_recipe['title']}")
-            print(f"Source URL: {detailed_recipe['source_url']}")
-            print(f"Spoonacular URL: {detailed_recipe['spoonacular_url']}")
-            print("\nIngredients:")
-            for ing in detailed_recipe['ingredients']:
-                print(f"- {ing['original']}")
-            print("\nNutritional Information:")
-            for nutrient, value in detailed_recipe['nutrition'].items():
-                print(f"- {nutrient}: {value['amount']} {value['unit']}")
-            print("-" * 50)
-        
-        with open('detailed_recipes.json', 'w', encoding='utf-8') as f:
-            json.dump(recipes, f, indent=2, ensure_ascii=False)
-        print("\nDetailed recipes saved to detailed_recipes.json")
-        
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
+# Now import your models
+from recipes.models import ScrapedRecipe, RecipeIngredient
+from recipes.scraper import scrape_bbc_food
 
-if __name__ == "__main__":
-    print("Starting detailed recipe fetcher...")
-    get_detailed_recipes()
+
+def scrape_bbc_food(ingredient):
+    """
+    Scrapes BBC Food for recipes containing the given ingredient.
+    """
+    search_url = f"https://www.bbc.co.uk/food/search?q={ingredient}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    response = requests.get(search_url, headers=headers)
+    if response.status_code != 200:
+        print(f"Failed to retrieve BBC Food for {ingredient}. Status code: {response.status_code}")
+        return []
+    
+    soup = BeautifulSoup(response.text, 'html.parser')
+    recipes = []
+    
+    # Locate recipe containers (modify based on actual HTML structure)
+    recipe_cards = soup.find_all("div", class_="gel-layout__item")
+    
+    for card in recipe_cards:
+        title_tag = card.find("h3")
+        if not title_tag:
+            continue
+        
+        title = title_tag.text.strip()
+        link_tag = title_tag.find("a")
+        if link_tag:
+            url = "https://www.bbc.co.uk" + link_tag["href"]
+        else:
+            continue
+        
+        image_tag = card.find("img")
+        image_url = image_tag["src"] if image_tag else None
+        
+        # Fetch detailed recipe page
+        recipe_response = requests.get(url, headers=headers)
+        recipe_soup = BeautifulSoup(recipe_response.text, 'html.parser')
+        
+        instructions_section = recipe_soup.find("ol", class_="recipe-method__list")
+        instructions = "\n".join([step.text.strip() for step in instructions_section.find_all("li")]) if instructions_section else "No instructions found."
+        
+        # Extract ingredients
+        ingredients_section = recipe_soup.find_all("li", class_="recipe-ingredients__list-item")
+        ingredients = [ing.text.strip() for ing in ingredients_section] if ingredients_section else []
+        
+        # Save recipe to database
+        scraped_recipe = ScrapedRecipe.objects.create(
+            title=title,
+            url=url,
+            image=image_url,
+            instructions=instructions,
+            scraped_at=datetime.now()
+        )
+        
+        for ingredient in ingredients:
+            RecipeIngredient.objects.create(recipe=scraped_recipe, name=ingredient)
+        
+        recipes.append(scraped_recipe)
+    
+    return recipes
