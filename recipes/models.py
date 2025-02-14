@@ -1,14 +1,20 @@
+import json
 from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import date
 
 class Recipe(models.Model):
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=255)
     description = models.TextField()
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    source = models.CharField(max_length=50, choices=[('dataset', 'Dataset'), ('bbc', 'BBC Food')], default='dataset')
+    url = models.URLField(null=True, blank=True)
+    ingredients = models.TextField(null=True, blank=True, default='[]')
+    instructions = models.TextField(null=True, blank=True, default='')  # Changed this line
+    prep_time = models.IntegerField(null=True, blank=True)
+    servings = models.IntegerField(null=True, blank=True)
+    nutrition_info = models.JSONField(null=True, blank=True)
+
 
     def get_absolute_url(self):
         return reverse("recipes-detail", kwargs={"pk": self.pk})
@@ -18,6 +24,9 @@ class Recipe(models.Model):
     
     def is_saved_by(self, user):
         return self.saved_by.filter(user=user).exists()
+    
+    def get_ingredient_list(self):
+        return json.loads(self.ingredients)
 
     def get_categories(self):
         """Automatically determine categories based on recipe content"""
@@ -197,3 +206,65 @@ class RecipeIngredient(models.Model):
     def __str__(self):
         return f"{self.amount} {self.unit} {self.name}" if self.amount else self.name
 
+class DatasetRecipe(models.Model):
+    name = models.CharField(max_length=255, db_index=True)
+    cook_time = models.CharField(max_length=50, default='Unknown')
+    prep_time = models.CharField(max_length=50, default='Unknown')
+    category = models.CharField(max_length=100, default='Uncategorized', db_index=True)
+    servings = models.IntegerField(default=4)
+    
+    # Nutrition info
+    calories = models.FloatField(default=0, db_index=True)
+    protein = models.FloatField(default=0)
+    carbs = models.FloatField(default=0)
+    fat = models.FloatField(default=0)
+    
+    # Recipe details
+    instructions = models.TextField(default='')
+    ingredients_list = models.TextField(default='[]')  # New field
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["name"]),
+            models.Index(fields=["category"]),
+            models.Index(fields=["calories"]),
+        ]
+        
+    def __str__(self):
+        return self.name
+
+    def get_ingredients(self):
+        try:
+            import json
+            return json.loads(self.ingredients_list)
+        except:
+            return []
+
+    def format_time(self, time_str):
+        if not time_str or time_str == 'Unknown':
+            return 'Not specified'
+        try:
+            # Remove "PT" prefix and "M" suffix
+            time_str = time_str.replace('PT', '').replace('M', '')
+            minutes = int(time_str)
+            hours = minutes // 60
+            remaining_minutes = minutes % 60
+            if hours > 0:
+                return f"{hours}h {remaining_minutes}m" if remaining_minutes else f"{hours}h"
+            return f"{minutes}m"
+        except:
+            return time_str
+
+   
+
+class DatasetIngredient(models.Model):
+    recipe = models.ForeignKey(DatasetRecipe, related_name='dataset_ingredients', on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f"{self.name} for {self.recipe.name}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['name'])
+        ]

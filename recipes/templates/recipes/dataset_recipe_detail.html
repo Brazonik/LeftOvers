@@ -1,0 +1,102 @@
+{% extends 'recipes/base.html' %}
+{% block content %}
+
+<div style="max-width: 800px; margin: 40px auto; padding: 20px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
+    <!-- Recipe Title -->
+    <h1 style="color: #ff6347; font-size: 2em; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #ff634730;">
+        {{ recipe.name }}
+    </h1>
+
+    <!-- Recipe Meta Info -->
+    <div style="background-color: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Prep Time:</span>
+                <span>{{ recipe.prep_time|default:"Not specified" }}</span>
+            </div>
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Cook Time:</span>
+                <span>{{ recipe.cook_time|default:"Not specified" }}</span>
+            </div>
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Servings:</span>
+                <span>{{ recipe.servings|default:"Not specified" }}</span>
+            </div>
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Category:</span>
+                <span style="display: inline-block; padding: 5px 15px; background-color: #ff634715; color: #ff6347; border-radius: 20px; font-size: 0.9em;">
+                    {{ recipe.category|default:"Uncategorized" }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ingredients -->
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #ff6347; margin-bottom: 15px;">Ingredients</h2>
+        {% if recipe.dataset_ingredients.all %}
+            <ul style="list-style-type: none; padding: 0;">
+                {% for ingredient in recipe.dataset_ingredients.all %}
+                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                        • {{ ingredient.name }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #666;">No ingredients listed</p>
+        {% endif %}
+    </div>
+
+    <!-- Instructions -->
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #ff6347; margin-bottom: 15px;">Instructions</h2>
+        {% if recipe.instructions %}
+            <div style="line-height: 1.6;">
+                {{ recipe.instructions|linebreaks }}
+            </div>
+        {% else %}
+            <p style="color: #666;">No instructions available</p>
+        {% endif %}
+    </div>
+
+    <!-- Nutrition Information -->
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
+        <h2 style="color: #ff6347; margin-bottom: 15px;">Nutrition Information</h2>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+            {% if recipe.calories %}
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Calories:</span>
+                <span>{{ recipe.calories }}</span>
+            </div>
+            {% endif %}
+            {% if recipe.protein %}
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Protein:</span>
+                <span>{{ recipe.protein }}g</span>
+            </div>
+            {% endif %}
+            {% if recipe.carbs %}
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Carbs:</span>
+                <span>{{ recipe.carbs }}g</span>
+            </div>
+            {% endif %}
+            {% if recipe.fat %}
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Fat:</span>
+                <span>{{ recipe.fat }}g</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div style="margin-top: 30px; text-align: center;">
+        <a href="{% url 'recipes-home' %}" 
+           style="display: inline-block; padding: 10px 20px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px;">
+            ← Back to Recipes
+        </a>
+    </div>
+</div>
+
+{% endblock content %}

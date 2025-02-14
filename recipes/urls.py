@@ -21,6 +21,10 @@ urlpatterns = [
 
     path('scrape-recipes/', views.scrape_recipes, name="scrape_recipes"),  
     path('ingredient-tracking/', views.ingredient_tracking, name="ingredient_tracking"),
+    path('', views.home, name='recipes-home'),
+    # urls.py
+    path('dataset-recipe/<int:pk>/', views.dataset_recipe_detail, name='dataset-recipe-detail'),
+
 
 
 ]
