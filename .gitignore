@@ -1,0 +1,8 @@
+# Ignore virtual environment
+env/
+venv/
+
+__pycache__/
+*.pyc
+recipes/migrations/__pycache__/
+recipes/management/
