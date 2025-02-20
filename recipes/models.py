@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import date
+import re
 
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
@@ -10,11 +11,12 @@ class Recipe(models.Model):
     source = models.CharField(max_length=50, choices=[('dataset', 'Dataset'), ('bbc', 'BBC Food')], default='dataset')
     url = models.URLField(null=True, blank=True)
     ingredients = models.TextField(null=True, blank=True, default='[]')
-    instructions = models.TextField(null=True, blank=True, default='')  # Changed this line
+    instructions = models.TextField(null=True, blank=True, default='')
     prep_time = models.IntegerField(null=True, blank=True)
     servings = models.IntegerField(null=True, blank=True)
     nutrition_info = models.JSONField(null=True, blank=True)
-
+    author = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)    
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def get_absolute_url(self):
         return reverse("recipes-detail", kwargs={"pk": self.pk})
@@ -27,6 +29,8 @@ class Recipe(models.Model):
     
     def get_ingredient_list(self):
         return json.loads(self.ingredients)
+
+    # Keep other Recipe methods...
 
     def get_categories(self):
         """Automatically determine categories based on recipe content"""
@@ -212,6 +216,14 @@ class DatasetRecipe(models.Model):
     prep_time = models.CharField(max_length=50, default='Unknown')
     category = models.CharField(max_length=100, default='Uncategorized', db_index=True)
     servings = models.IntegerField(default=4)
+    ingredients_parts = models.TextField(default='[]')
+    ingredients_quantities = models.TextField(default='[]')
+    calories = models.FloatField(default=0, db_index=True)
+    protein = models.FloatField(default=0)
+    carbs = models.FloatField(default=0)
+    fat = models.FloatField(default=0)
+    instructions = models.TextField(default='')
+    ingredients_list = models.TextField(default='[]')
     
     # Nutrition info
     calories = models.FloatField(default=0, db_index=True)
@@ -221,7 +233,7 @@ class DatasetRecipe(models.Model):
     
     # Recipe details
     instructions = models.TextField(default='')
-    ingredients_list = models.TextField(default='[]')  # New field
+    ingredients_list = models.TextField(default='[]')
 
     class Meta:
         indexes = [
@@ -232,28 +244,78 @@ class DatasetRecipe(models.Model):
         
     def __str__(self):
         return self.name
-
+    
     def get_ingredients(self):
         try:
-            import json
-            return json.loads(self.ingredients_list)
-        except:
+            if not self.ingredients_parts:
+                return []
+                
+            # Convert "c(...)" format string into a list
+            text = self.ingredients_parts
+            if text.startswith('c('):
+                text = text[2:-1]  # Remove c( and )
+                
+            # Split on commas and clean each ingredient
+            ingredients = []
+            for ingredient in text.split(','):
+                # Remove quotes, spaces, and normalize
+                cleaned = ingredient.replace('"', '').strip()
+                if cleaned:
+                    ingredients.append(cleaned.lower())
+                    
+            return ingredients
+        except Exception as e:
+            print(f"Error parsing ingredients for {self.name}: {str(e)}")
             return []
 
-    def format_time(self, time_str):
+    def get_clean_name(self):
+        return self.name
+
+    def get_prep_time_display(self):
+        return self.prep_time
+
+    def get_cook_time_display(self):
+        return self.cook_time
+
+
+    def get_full_ingredients(self):
+        try:
+            quantities = self.ingredients_quantities.replace('c(', '').replace(')', '')
+            quantities = [q.strip('"').strip() for q in quantities.split(',') if q.strip()]
+            parts = self.ingredients_parts.replace('c(', '').replace(')', '')
+            parts = [p.strip('"').strip() for p in parts.split(',') if p.strip()]
+            return [f"{q} {p}" for q, p in zip(quantities, parts)]
+        except Exception as e:
+            print(f"Error getting full ingredients for {self.name}: {str(e)}")
+            return []
+    
+        
+def format_time(self, time_str):
         if not time_str or time_str == 'Unknown':
             return 'Not specified'
         try:
-            # Remove "PT" prefix and "M" suffix
-            time_str = time_str.replace('PT', '').replace('M', '')
-            minutes = int(time_str)
-            hours = minutes // 60
-            remaining_minutes = minutes % 60
-            if hours > 0:
-                return f"{hours}h {remaining_minutes}m" if remaining_minutes else f"{hours}h"
-            return f"{minutes}m"
-        except:
+            time_str = time_str.replace('PT', '')
+            if 'M' in time_str:
+                minutes = int(time_str.replace('M', ''))
+                return f"{minutes} min"
+            elif 'H' in time_str:
+                hours = int(time_str.replace('H', ''))
+                return f"{hours} hr"
+            elif 'S' in time_str:
+                return "< 1 min"
             return time_str
+        except:
+            return 'Not specified'
+
+def get_prep_time_display(self):
+        return self.format_time(self.prep_time)
+
+def get_cook_time_display(self):
+        return self.format_time(self.cook_time)
+
+def get_clean_name(self):
+        import html
+        return html.unescape(self.name)
 
    
 

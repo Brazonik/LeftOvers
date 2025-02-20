@@ -5,6 +5,8 @@ from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 
+from recipes.utils import normalize_ingredient_name
+
 from . import models
 from .models import DatasetRecipe, Recipe, RecipeIngredient, SavedRecipe, ScrapedRecipe, TrackedIngredient
 from django.http import JsonResponse
@@ -15,10 +17,12 @@ from bs4 import BeautifulSoup
 import requests
 from recipes.models import Recipe
 from django.core.paginator import Paginator
+
 from .models import DatasetRecipe
 import sys
 from django.shortcuts import render
 from recipes.models import DatasetRecipe
+from .utils import normalize_ingredient_name  # Add this at the top
 
 def dataset_recipe_detail(request, pk):
     try:
@@ -29,30 +33,48 @@ def dataset_recipe_detail(request, pk):
         raise
 
 
+
 def home(request):
     query = request.GET.get("q", "").strip()
     category = request.GET.get("category", "")
     
-    # Start with all recipes
-    recipes = DatasetRecipe.objects.all()
-
-    # Apply search filters
+    dataset_recipes = DatasetRecipe.objects.all().order_by('name')
+    user_recipes = Recipe.objects.all().order_by('title')
+    
     if query:
-        recipes = recipes.filter(name__icontains=query)
-        print(f"Found {recipes.count()} recipes matching '{query}'")  # Debug print
+        dataset_recipes = dataset_recipes.filter(name__icontains=query)
+        user_recipes = user_recipes.filter(title__icontains=query)
     
     if category and category != 'all':
-        recipes = recipes.filter(category__icontains=category)
+        dataset_recipes = dataset_recipes.filter(category__icontains=category)
+        if user_recipes:
+            user_recipes = [recipe for recipe in user_recipes if category in recipe.get_categories()]
 
-    # Add pagination
-    paginator = Paginator(recipes, 24)  # Show 24 recipes per page
-    page = request.GET.get('page', 1)
-    recipes = paginator.get_page(page)
+    dataset_list = list(dataset_recipes)
+    user_list = list(user_recipes)
+    
+    combined_recipes = []
+    
+    for recipe in dataset_list:
+        combined_recipes.append(recipe)
+    
+    for recipe in user_list:
+        recipe.get_prep_time_display = lambda: f"{recipe.prep_time} min" if recipe.prep_time else "Not specified"
+        recipe.get_cook_time_display = lambda: "Not specified"  # Since user recipes might not have this
+        recipe.get_clean_name = lambda: recipe.title
+        recipe.category = "User Created"  # Or you could use recipe.get_categories()[0] if categories exist
+        recipe.is_user_recipe = True  # Add this flag to distinguish in template
+        combined_recipes.append(recipe)
+
+    per_page = 24
+    paginator = Paginator(combined_recipes, per_page)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
 
     context = {
-        "recipes": recipes,
+        "recipes": page_obj,
         "query": query,
-        "total_results": recipes.paginator.count if query else DatasetRecipe.objects.count(),
+        "total_results": len(combined_recipes),
         "filter_options": [
             ("all", "All Recipes"),
             ("breakfast", "Breakfast"),
@@ -68,6 +90,49 @@ def home(request):
     }
     
     return render(request, "recipes/home.html", context)
+
+def search_recipes(request):
+    query = request.GET.get("q", "")
+    category = request.GET.get("category", "")
+    max_calories = request.GET.get("max_calories", None)
+
+    dataset_recipes = DatasetRecipe.objects.all()
+    user_recipes = Recipe.objects.all()
+
+    if query:
+        dataset_recipes = dataset_recipes.filter(name__icontains=query)
+        user_recipes = user_recipes.filter(title__icontains=query)
+    
+    if category:
+        dataset_recipes = dataset_recipes.filter(category__icontains=category)
+        if user_recipes:
+            user_recipes = [recipe for recipe in user_recipes if category in recipe.get_categories()]
+    
+    if max_calories:
+        dataset_recipes = dataset_recipes.filter(calories__lte=max_calories)
+
+    combined_recipes = []
+    for recipe in dataset_recipes:
+        combined_recipes.append({
+            'title': recipe.get_clean_name(),
+            'type': 'dataset',
+            'pk': recipe.pk,
+            'category': recipe.category,
+        })
+    
+    for recipe in user_recipes:
+        combined_recipes.append({
+            'title': recipe.title,
+            'type': 'user',
+            'pk': recipe.pk,
+            'author': recipe.author.username,
+        })
+
+    return render(request, "recipes/search.html", {
+        "recipes": combined_recipes, 
+        "query": query, 
+        "category": category
+    })
 
 
 
@@ -144,7 +209,7 @@ def toggle_save_recipe(request, pk):
 
 class RecipeCreateView(LoginRequiredMixin, CreateView):
     model = models.Recipe
-    fields = ['title', 'description']
+    fields = ['title', 'description', 'ingredients', 'instructions', 'prep_time', 'servings']
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -178,12 +243,16 @@ def about(request):
 
 @login_required
 def profile(request):
+    created_recipes = Recipe.objects.filter(author=request.user)
     saved_recipes = SavedRecipe.objects.filter(user=request.user)
-    saved_recipes_count = saved_recipes.count()  
+    recipes_count = created_recipes.count()
+    saved_recipes_count = saved_recipes.count() 
     shopping_list = ShoppingListItem.objects.filter(user=request.user).order_by('expiration_date')
     tracked_ingredients = TrackedIngredient.objects.filter(user=request.user)  
 
     context = {
+        'created_recipes': created_recipes,
+        'recipes_count': recipes_count,
         'saved_recipes': saved_recipes,
         'saved_recipes_count': saved_recipes_count,
         'shopping_list': shopping_list,  
@@ -382,54 +451,149 @@ def scrape_recipes(request):
 
     
 @login_required
-def ingredient_tracking(request):
-    """
-    Displays the user's tracked ingredients and allows them to find recipes.
-    """
-    tracked_ingredients = TrackedIngredient.objects.filter(user=request.user).order_by('expiration_date')
+def track_ingredient(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            print("Received data:", data)  # Debug print
+            
+            ingredient_name = data.get("ingredient_name")
+            quantity = data.get("quantity")
+            expiration_date = data.get("expiration_date")
 
-    # Convert tracked ingredients to a set of lowercase names
-    user_ingredient_names = set(item.ingredient_name.lower() for item in tracked_ingredients)
+            if not ingredient_name:
+                return JsonResponse({"success": False, "error": "Ingredient name is required"})
 
-    matched_recipes = []
-    for recipe in ScrapedRecipe.objects.all():
-        recipe_ingredients = set(ingredient.name.lower() for ingredient in recipe.ingredients.all())
+            if expiration_date:
+                expiration_date = datetime.strptime(expiration_date, "%Y-%m-%d").date()
 
-        # Ensure ONLY recipes where all ingredients exist in tracked ingredients are included
-        if recipe_ingredients.issubset(user_ingredient_names):  # ✅ Fully matches
-            matched_recipes.append({
-                "title": recipe.title,
-                "url": recipe.url,
-                "used_ingredients": list(recipe_ingredients),
-                "missing_ingredients": [],
-                "usage_percentage": 100,  # Since it's a full match, it's 100%
-                "nutrition": getattr(recipe, "nutrition", {}),
-                "readyInMinutes": getattr(recipe, "readyInMinutes", "N/A"),
-                "servings": getattr(recipe, "servings", "N/A"),
+            ingredient = TrackedIngredient.objects.create(
+                user=request.user,
+                ingredient_name=ingredient_name,
+                quantity=quantity,
+                expiration_date=expiration_date
+            )
+
+            return JsonResponse({
+                "success": True,
+                "ingredient": {
+                    "name": ingredient.ingredient_name,
+                    "quantity": ingredient.quantity,
+                    "expiration_date": ingredient.expiration_date.strftime("%Y-%m-%d") if ingredient.expiration_date else None
+                }
             })
+        except Exception as e:
+            print(f"Error adding ingredient: {str(e)}")  # Debug print
+            return JsonResponse({"success": False, "error": str(e)})
 
-    # If no recipes match, send an error message
-    if not matched_recipes:
-        return render(request, "recipes/ingredient_tracking.html", {
-            "tracked_ingredients": tracked_ingredients,
-            "recipes": [],
-            "error_message": "No recipes were found that use only your tracked ingredients. Try adding more!"
-        })
+    return JsonResponse({"success": False, "error": "Invalid request method"})
 
-    return render(request, "recipes/ingredient_tracking.html", {
-        "tracked_ingredients": tracked_ingredients,
-        "recipes": matched_recipes
-    })
+@login_required
+def ingredient_tracking(request):
+    tracked_ingredients = TrackedIngredient.objects.filter(user=request.user).order_by('expiration_date')
+    print(f"Number of tracked ingredients: {tracked_ingredients.count()}")
+    
+    user_ingredients = {normalize_ingredient_name(item.ingredient_name): item 
+                       for item in tracked_ingredients}
+    print(f"Normalized user ingredients: {list(user_ingredients.keys())}")
+    
+    matched_recipes = []
+    checked_recipes = 0
+    
+    for recipe in DatasetRecipe.objects.all():
+        checked_recipes += 1
+        try:
+            recipe_ingredients = recipe.get_ingredients()
+            if recipe_ingredients and len(recipe_ingredients) > 1:  # Only consider recipes with more than 1 ingredient
+                recipe_ing_set = set(recipe_ingredients)
+                user_ing_set = set(user_ingredients.keys())
+                
+                matching_ings = recipe_ing_set.intersection(user_ing_set)
+                if matching_ings and len(matching_ings) >= 2:  # Only include if at least 2 ingredients match
+                    missing_ings = recipe_ing_set - user_ing_set
+                    match_percentage = (len(matching_ings) / len(recipe_ingredients)) * 100
+                    
+                    matched_recipes.append({
+                        'is_dataset': True,
+                        'recipe': recipe,
+                        'name': recipe.name,
+                        'prep_time': recipe.prep_time,
+                        'cook_time': recipe.cook_time,
+                        'matching_ingredients': list(matching_ings),
+                        'missing_ingredients': list(missing_ings),
+                        'match_percentage': round(match_percentage, 1),
+                        'is_perfect_match': len(missing_ings) == 0,
+                        'total_ingredients': len(recipe_ingredients),
+                        'extra_ingredients_needed': len(missing_ings)
+                    })
+                    
+        except Exception as e:
+            print(f"Error with recipe {recipe.name}: {str(e)}")
+            continue
+
+    for recipe in Recipe.objects.all():
+        try:
+            recipe_ingredients = [normalize_ingredient_name(ing) 
+                                for ing in json.loads(recipe.ingredients)]
+            
+            if recipe_ingredients and len(recipe_ingredients) > 1:
+                recipe_ing_set = set(recipe_ingredients)
+                user_ing_set = set(user_ingredients.keys())
+                
+                matching_ings = recipe_ing_set.intersection(user_ing_set)
+                if matching_ings and len(matching_ings) >= 2:
+                    missing_ings = recipe_ing_set - user_ing_set
+                    match_percentage = (len(matching_ings) / len(recipe_ingredients)) * 100
+                    
+                    matched_recipes.append({
+                        'is_dataset': False,
+                        'recipe': recipe,
+                        'name': recipe.title,
+                        'prep_time': f"{recipe.prep_time} min" if recipe.prep_time else "Not specified",
+                        'matching_ingredients': list(matching_ings),
+                        'missing_ingredients': list(missing_ings),
+                        'match_percentage': round(match_percentage, 1),
+                        'is_perfect_match': len(missing_ings) == 0,
+                        'total_ingredients': len(recipe_ingredients),
+                        'extra_ingredients_needed': len(missing_ings)
+                    })
+                    
+        except Exception as e:
+            print(f"Error with user recipe {recipe.title}: {str(e)}")
+            continue
+
+    matched_recipes.sort(key=lambda x: (
+        -x['is_perfect_match'],           # Perfect matches first (-True = -1, -False = 0)
+        -x['match_percentage'],           # Higher percentage first
+        -x['total_ingredients'],          # More ingredients first
+        x['extra_ingredients_needed']     # Fewer missing ingredients first
+    ))
+
+    paginator = Paginator(matched_recipes, 20)  # Show 20 recipes per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    print(f"\nFinal stats:")
+    print(f"Checked {checked_recipes} recipes")
+    print(f"Found {len(matched_recipes)} matches")
+    print(f"Perfect matches: {sum(1 for r in matched_recipes if r['is_perfect_match'])}")
+
+    context = {
+        'tracked_ingredients': tracked_ingredients,
+        'matched_recipes': page_obj,  # Use paginated recipes
+        'total_matches': len(matched_recipes),
+        'perfect_matches': sum(1 for r in matched_recipes if r['is_perfect_match'])
+    }
+
+    return render(request, 'recipes/ingredient_tracking.html', context)
 
 def search_recipes(request):
     query = request.GET.get("q", "")
     category = request.GET.get("category", "")
     max_calories = request.GET.get("max_calories", None)
 
-    # Start with all recipes
     recipes = DatasetRecipe.objects.all()
 
-    # Apply filters
     if query:
         recipes = recipes.filter(name__icontains=query)
     if category:
