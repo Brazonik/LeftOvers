@@ -2,7 +2,33 @@
 env/
 venv/
 
+<<<<<<< HEAD
 __pycache__/
 *.pyc
 recipes/migrations/__pycache__/
 recipes/management/
+=======
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore database files
+*.sqlite3
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore Python packages
+*.egg-info/
+__pycache__/
+
+# Ignore logs
+*.log
+
+# Ignore local settings
+.env
+>>>>>>> scraping
