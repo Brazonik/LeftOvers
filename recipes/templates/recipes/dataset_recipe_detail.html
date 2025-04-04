@@ -1,44 +1,80 @@
+<!-- Code to display the details of a dataset recipe -->
+
 {% extends 'recipes/base.html' %}
+{% load recipe_filters %}
 {% block content %}
 
+<!-- Container for recipe details -->
 <div style="max-width: 800px; margin: 40px auto; padding: 20px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
-    <!-- Recipe Title -->
-    <h1 style="color: #ff6347; font-size: 2em; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #ff634730;">
-        {{ recipe.name }}
-    </h1>
+    <!-- Recipe title -->
+    <h1>{{ recipe.name }}</h1>
 
-    <!-- Recipe Meta Info -->
+    <!-- Recipe image -->
+    <div style="margin-bottom: 30px; text-align: center;">
+        {% if recipe|has_image %}
+            <!-- Displays the primary image of recipe if it exists and if not uses placeholder image. -->
+            <img src="{{ recipe|get_primary_image }}" alt="{{ recipe.name }}" 
+                 style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
+        {% else %}
+            <!-- Placeholder if no image -->
+            <img src="https://via.placeholder.com/800x400?text=No+Image+Available" alt="Recipe" 
+            
+                 style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
+        {% endif %}
+    </div>
+    
+
+    <!-- Recipe meta Info, prep time, cook time, servings, calories -->
     <div style="background-color: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div>
                 <span style="font-weight: bold; color: #ff6347;">Prep Time:</span>
-                <span>{{ recipe.prep_time|default:"Not specified" }}</span>
+                <span>{{ recipe.get_prep_time_display }}</span>
             </div>
             <div>
                 <span style="font-weight: bold; color: #ff6347;">Cook Time:</span>
-                <span>{{ recipe.cook_time|default:"Not specified" }}</span>
+                <span>{{ recipe.get_cook_time_display }}</span>
             </div>
             <div>
                 <span style="font-weight: bold; color: #ff6347;">Servings:</span>
-                <span>{{ recipe.servings|default:"Not specified" }}</span>
+                <span>{{ recipe.servings }}</span>
             </div>
             <div>
-                <span style="font-weight: bold; color: #ff6347;">Category:</span>
-                <span style="display: inline-block; padding: 5px 15px; background-color: #ff634715; color: #ff6347; border-radius: 20px; font-size: 0.9em;">
-                    {{ recipe.category|default:"Uncategorized" }}
-                </span>
+                <span style="font-weight: bold; color: #ff6347;">Calories:</span>
+                <span>{{ recipe.calories|floatformat:1 }}</span>
             </div>
         </div>
     </div>
 
+    <!-- Nutrition info, protein, carbs, fat -->
+    {% if recipe.protein or recipe.carbs or recipe.fat %}
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #ff6347; margin-bottom: 15px;">Nutrition Information</h2>
+        <div style="display: flex; gap: 20px; background-color: #f9f9f9; padding: 15px; border-radius: 10px;">
+            <div style="flex: 1; text-align: center;">
+                <div style="font-size: 1.5em; font-weight: bold; color: #ff6347;">{{ recipe.protein|floatformat:1 }}g</div>
+                <div style="font-size: 0.9em; color: #555;">Protein</div>
+            </div>
+            <div style="flex: 1; text-align: center;">
+                <div style="font-size: 1.5em; font-weight: bold; color: #ff6347;">{{ recipe.carbs|floatformat:1 }}g</div>
+                <div style="font-size: 0.9em; color: #555;">Carbs</div>
+            </div>
+            <div style="flex: 1; text-align: center;">
+                <div style="font-size: 1.5em; font-weight: bold; color: #ff6347;">{{ recipe.fat|floatformat:1 }}g</div>
+                <div style="font-size: 0.9em; color: #555;">Fat</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Ingredients -->
     <div style="margin-bottom: 30px;">
         <h2 style="color: #ff6347; margin-bottom: 15px;">Ingredients</h2>
-        {% if recipe.dataset_ingredients.all %}
+        {% if recipe.get_ingredients %}
             <ul style="list-style-type: none; padding: 0;">
-                {% for ingredient in recipe.dataset_ingredients.all %}
+                {% for ingredient in recipe.get_ingredients %}
                     <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                        • {{ ingredient.name }}
+                        • {{ ingredient }}
                     </li>
                 {% endfor %}
             </ul>
@@ -59,44 +95,136 @@
         {% endif %}
     </div>
 
-    <!-- Nutrition Information -->
-    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
-        <h2 style="color: #ff6347; margin-bottom: 15px;">Nutrition Information</h2>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-            {% if recipe.calories %}
-            <div>
-                <span style="font-weight: bold; color: #ff6347;">Calories:</span>
-                <span>{{ recipe.calories }}</span>
-            </div>
-            {% endif %}
-            {% if recipe.protein %}
-            <div>
-                <span style="font-weight: bold; color: #ff6347;">Protein:</span>
-                <span>{{ recipe.protein }}g</span>
-            </div>
-            {% endif %}
-            {% if recipe.carbs %}
-            <div>
-                <span style="font-weight: bold; color: #ff6347;">Carbs:</span>
-                <span>{{ recipe.carbs }}g</span>
-            </div>
-            {% endif %}
-            {% if recipe.fat %}
-            <div>
-                <span style="font-weight: bold; color: #ff6347;">Fat:</span>
-                <span>{{ recipe.fat }}g</span>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+    <!-- CSRF token for AJAX requests for security -->
+    <form id="csrf-form">
+        {% csrf_token %}
+    </form>
 
-    <!-- Back Button -->
-    <div style="margin-top: 30px; text-align: center;">
-        <a href="{% url 'recipes-home' %}" 
-           style="display: inline-block; padding: 10px 20px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px;">
-            ← Back to Recipes
+    <!-- Action buttons, add, tried, go back, -->
+    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap;">
+        {% if user.is_authenticated %}
+            <button id="save-recipe-btn" class="btn" data-recipe-id="{{ recipe.id }}"
+                    style="display: inline-block; padding: 12px 24px; background-color: {{ is_saved|yesno:'#ff6347,white' }}; color: {{ is_saved|yesno:'white,#ff6347' }}; border: 2px solid #ff6347; border-radius: 30px; font-weight: bold; text-align: center; cursor: pointer;">
+                {{ is_saved|yesno:'Saved,Save Recipe' }}
+            </button>
+            
+            
+            <a href="#" id="add-to-shopping-list" class="btn" data-recipe-id="{{ recipe.id }}" data-is-dataset="true"
+               style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+                Add to Shopping List
+            </a>
+
+            {% if recipe|has_tried:user %}
+            <button disabled class="btn btn-success"
+                   style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+                ✓ Tried
+            </button>
+        {% else %}
+            <a href="{% url 'dataset-recipe-try-confirm' recipe.id %}" class="btn btn-success"
+               style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+                Try Recipe
+            </a>
+        {% endif %}
+            
+        {% endif %}
+        
+        <a href="javascript:history.back()" class="btn"
+           style="display: inline-block; padding: 12px 24px; background-color: #607D8B; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+            Back to Previous Page
         </a>
     </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Save Recipe Button
+        const saveRecipeBtn = document.getElementById('save-recipe-btn');
+        if (saveRecipeBtn) {
+            saveRecipeBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const recipeId = this.getAttribute('data-recipe-id');
+                
+                try {
+                    const csrfToken = document.querySelector('#csrf-form [name=csrfmiddlewaretoken]').value;
+                    
+                    const response = await fetch(`/save-dataset-recipe/${recipeId}/`, {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": csrfToken,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({})
+                    });
+                    // Sends a request to the server to save the recipe plus the csrf token
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Update button appearance based on saved successfullt or not
+                        if (data.is_saved) {
+                            this.style.backgroundColor = "#ff6347";
+                            this.style.color = "white";
+                            this.textContent = "Saved";
+                        } else {
+                            this.style.backgroundColor = "white";
+                            this.style.color = "#ff6347";
+                            this.textContent = "Save Recipe";
+                        }
+                    } else {
+                        alert(data.error || "Failed to save recipe");
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    alert("Failed to save recipe. Please try again.");
+                }
+            });
+        }
+
+        // Add to Shopping List Button
+        const addToShoppingListBtn = document.getElementById('add-to-shopping-list');
+        if (addToShoppingListBtn) {
+            addToShoppingListBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const recipeId = this.getAttribute('data-recipe-id');
+                const isDataset = this.getAttribute('data-is-dataset') === 'true';
+                
+                try {
+                    const csrfToken = document.querySelector('#csrf-form [name=csrfmiddlewaretoken]').value;
+                    
+                    const formData = new FormData();
+                    formData.append('is_dataset', isDataset.toString());
+                    
+                    const response = await fetch(`/add-recipe-to-shopping-list/${recipeId}/`, {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": csrfToken
+                        },
+                        body: formData
+                    });
+                    // Send request to server to add the recipes ingredients to the shopping list
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(data.message);
+                        
+                        if (confirm('Go to your shopping list?')) {
+                            window.location.href = "{% url 'shopping_list' %}";
+                        }
+                    } else {
+                        alert(data.error || "Failed to add ingredients to shopping list");
+                    }
+
+                    // Message token to alert user of success or failure
+                } catch (error) {
+                    console.error("Error:", error);
+                    alert("Failed to add ingredients to shopping list. Please try again.");
+                }
+            });
+        }
+    });
+    </script>
 </div>
 
 {% endblock content %}
