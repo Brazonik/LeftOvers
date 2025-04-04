@@ -1,46 +1,258 @@
-{% extends 'recipes/base.html' %}
-{% load crispy_forms_tags %}
+<!-- Template for the recipe form which includes, title, desc, prep, cook time, servings,nutritional info and image, visually shows the form -->
+
+{% extends 'recipes/base.html' %} 
+{% load crispy_forms_tags %} 
+{% load recipe_filters %}
+
 {% block content %}
 
 <div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 40px 20px;">
-    <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);">
-        <!-- Decorative Header -->
+    <div style="max-width: 800px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);">
         <div style="text-align: center; margin-bottom: 25px;">
-            <h2 style="color: #ff6347; font-size: 2em; margin-bottom: 8px; font-weight: bold;">Create Recipe</h2>
+            <h2 style="color: #ff6347; font-size: 2em; margin-bottom: 8px; font-weight: bold;">{% if form.instance.pk %}Edit{% else %}Create{% endif %} Recipe</h2>
             <p style="color: #666; font-size: 0.9em;">Share your culinary masterpiece</p>
             <div style="width: 40px; height: 3px; background-color: #ff6347; margin: 15px auto;"></div>
         </div>
-
+        
         <div class="container">
-            <form method="Post">
+            <!-- Enctype attribute set to multipart/from-data for file uploads -->
+            <form method="Post" enctype="multipart/form-data">
                 {% csrf_token %}
-                <fieldset class="form-group" style="background-color: #fff; padding: 15px; border-radius: 10px;">
-                    {{ form|crispy }}
-                </fieldset>
                 
-                <!-- Action Buttons -->
-                <div class="form-group py-3" style="text-align: center;">
-                    <input type="submit" value="Save Recipe" 
-                           style="padding: 8px 30px; background-color: #ff6347; color: white; border: none; border-radius: 20px; font-size: 1em; cursor: pointer; font-weight: bold; transition: transform 0.2s ease; margin-right: 10px;">
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #ff6347; font-size: 1.3em; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #eee;">Recipe Basics</h3>
                     
-                    <a href="{% url 'recipes-home' %}" 
-                       style="display: inline-block; padding: 8px 30px; background-color: transparent; color: #ff6347; border: 2px solid #ff6347; border-radius: 20px; text-decoration: none; font-weight: bold; transition: all 0.2s ease;">
+                    <!-- Title field -->
+                    <div style="margin-bottom: 20px;">
+                        <label for="{{ form.title.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                            Title{% if form.title.field.required %} *{% endif %}
+                        </label>
+                        <input type="text" name="{{ form.title.name }}" id="{{ form.title.id_for_label }}" 
+                               value="{{ form.title.value|default:'' }}" 
+                               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
+                        {% if form.title.errors %}
+                            <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.title.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Description field -->
+                    <div style="margin-bottom: 20px;">
+                        <label for="{{ form.description.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                            Description{% if form.description.field.required %} *{% endif %}
+                        </label>
+                        <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" 
+                                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; min-height: 120px;" 
+                                  required>{{ form.description.value|default:'' }}</textarea>
+                        {% if form.description.errors %}
+                            <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.description.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Recipe details -->
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #ff6347; font-size: 1.3em; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #eee;">Recipe Details</h3>
+                    
+                    <!-- Ingredients field -->
+                    <div style="margin-bottom: 20px;">
+                        <label for="{{ form.ingredients.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                            Ingredients{% if form.ingredients.field.required %} *{% endif %}
+                        </label>
+                        <textarea name="{{ form.ingredients.name }}" id="{{ form.ingredients.id_for_label }}" 
+                                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; min-height: 150px;" 
+                                  placeholder="Enter ingredients separated by commas or one per line" 
+                                  required>{{ form.ingredients.value|default:'' }}</textarea>
+                        <div style="color: #666; font-size: 0.8em; margin-top: 5px;">Enter one ingredient per line or separate with commas</div>
+                        {% if form.ingredients.errors %}
+                            <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.ingredients.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Instructions field -->
+                    <div style="margin-bottom: 20px;">
+                        <label for="{{ form.instructions.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                            Instructions{% if form.instructions.field.required %} *{% endif %}
+                        </label>
+                        <textarea name="{{ form.instructions.name }}" id="{{ form.instructions.id_for_label }}" 
+                                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; min-height: 200px;" 
+                                  placeholder="Enter step-by-step instructions" 
+                                  required>{{ form.instructions.value|default:'' }}</textarea>
+                        {% if form.instructions.errors %}
+                            <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.instructions.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Recipe times & servings -->
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #ff6347; font-size: 1.3em; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #eee;">Cooking Information</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                        <!-- Prep time field -->
+                        <div>
+                            <label for="{{ form.prep_time.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                                Prep Time (minutes)
+                            </label>
+                            <input type="number" name="{{ form.prep_time.name }}" id="{{ form.prep_time.id_for_label }}" 
+                                   value="{{ form.prep_time.value|default:'' }}" min="0"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            {% if form.prep_time.errors %}
+                                <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.prep_time.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Cook time field -->
+                        <div>
+                            <label for="{{ form.cook_time.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                                Cook Time (minutes)
+                            </label>
+                            <input type="number" name="{{ form.cook_time.name }}" id="{{ form.cook_time.id_for_label }}" 
+                                   value="{{ form.cook_time.value|default:'' }}" min="0"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            {% if form.cook_time.errors %}
+                                <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.cook_time.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Servings field -->
+                        <div>
+                            <label for="{{ form.servings.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                                Servings
+                            </label>
+                            <input type="number" name="{{ form.servings.name }}" id="{{ form.servings.id_for_label }}" 
+                                   value="{{ form.servings.value|default:'' }}" min="1"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            {% if form.servings.errors %}
+                                <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.servings.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Nutrition information -->
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #ff6347; font-size: 1.3em; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #eee;">Nutrition Information (Optional)</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                        <!-- Calories field -->
+                        <div>
+                            <label for="{{ form.calories.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                                Calories
+                            </label>
+                            <input type="number" name="{{ form.calories.name }}" id="{{ form.calories.id_for_label }}" 
+                                   value="{{ form.calories.value|default:'' }}" min="0" step="0.1"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"
+                                   placeholder="Calories per serving">
+                            {% if form.calories.errors %}
+                                <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.calories.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Fat field -->
+                        <div>
+                            <label for="{{ form.fat.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                                Fat (g)
+                            </label>
+                            <input type="number" name="{{ form.fat.name }}" id="{{ form.fat.id_for_label }}" 
+                                   value="{{ form.fat.value|default:'' }}" min="0" step="0.1"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"
+                                   placeholder="Fat in grams">
+                            {% if form.fat.errors %}
+                                <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.fat.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Carbs field -->
+                        <div>
+                            <label for="{{ form.carbs.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                                Carbs (g)
+                            </label>
+                            <input type="number" name="{{ form.carbs.name }}" id="{{ form.carbs.id_for_label }}" 
+                                   value="{{ form.carbs.value|default:'' }}" min="0" step="0.1"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"
+                                   placeholder="Carbohydrates in grams">
+                            {% if form.carbs.errors %}
+                                <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.carbs.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Protein field -->
+                        <div>
+                            <label for="{{ form.protein.id_for_label }}" style="font-weight: bold; display: block; margin-bottom: 5px; color: #333;">
+                                Protein (g)
+                            </label>
+                            <input type="number" name="{{ form.protein.name }}" id="{{ form.protein.id_for_label }}" 
+                                   value="{{ form.protein.value|default:'' }}" min="0" step="0.1"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"
+                                   placeholder="Protein in grams">
+                            {% if form.protein.errors %}
+                                <div style="color: #f44336; font-size: 0.9em; margin-top: 5px;">{{ form.protein.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recipe photo -->
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #ff6347; font-size: 1.3em; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #eee;">Recipe Photo</h3>
+                    
+                    <div style="border: 2px dashed #ddd; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div id="preview-container" style="{% if form.image.value %}display: block;{% else %}display: none;{% endif %} margin-bottom: 15px;">
+                            <img id="image-preview" 
+                                 {% if form.image.value %}src="{{ form.image.value.url }}"{% endif %}
+                                 style="max-width: 100%; max-height: 300px; border-radius: 5px;" />
+                        </div>
+                        
+                        <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}" 
+                               accept="image/*" style="display: none;" onchange="previewImage(this)">
+                               
+                        <label for="{{ form.image.id_for_label }}" 
+                               style="cursor: pointer; padding: 12px 24px; background-color: #ff6347; color: white; border-radius: 5px; display: inline-block; font-weight: bold;">
+                            {% if form.image.value %}Change Image{% else %}Choose Image{% endif %}
+                        </label>
+                        
+                        <p style="margin-top: 10px; font-size: 0.9em; color: #888;">Click to select a recipe image</p>
+                        
+                        {% if form.image.errors %}
+                            <div style="color: #f44336; font-size: 0.9em; margin-top: 10px;">{{ form.image.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Action buttons, submitting from, update, create, cancel -->
+                <div style="text-align: center; margin-top: 30px;">
+                    <button type="submit" 
+                            style="padding: 12px 30px; background-color: #ff6347; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; margin-right: 10px;">
+                        {% if form.instance.pk %}Update{% else %}Create{% endif %} Recipe
+                    </button>
+                    
+                    <a href="javascript:history.back()" 
+                       style="padding: 12px 30px; background-color: #ccc; color: #333; border: none; border-radius: 5px; font-weight: bold; text-decoration: none; display: inline-block; font-size: 1.1em;">
                         Cancel
                     </a>
                 </div>
             </form>
-
-            <!-- Tips Section -->
-            <div style="margin-top: 20px; padding: 15px; background-color: #fff3e0; border-radius: 8px; font-size: 0.9em;">
-                <h4 style="color: #ff6347; margin-bottom: 10px; font-size: 1em;">Recipe Tips:</h4>
-                <ul style="color: #666; list-style-type: none; padding: 0; margin: 0;">
-                    <li style="margin-bottom: 5px;">✨ Be specific with measurements</li>
-                    <li style="margin-bottom: 5px;">📝 Clear step-by-step instructions</li>
-                    <li>⏰ Include prep & cooking times</li>
-                </ul>
-            </div>
         </div>
     </div>
 </div>
+
+<script>
+    function previewImage(input) {
+        const previewContainer = document.getElementById('preview-container');
+        const preview = document.getElementById('image-preview');
+        
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                previewContainer.style.display = 'block';
+            }
+            
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
+<!-- javascript hadling the image preview. User selects an image and it displays a preview of it -->
 
 {% endblock content %}
