@@ -1,4 +1,5 @@
 {% extends 'recipes/base.html' %}
+{% load recipe_filters %}
 {% block content %}
 
 <div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 0;">
@@ -13,8 +14,14 @@
             <!-- Profile Info -->
             <div>
                 <h1 style="font-size: 2.5em; color: #ff6347; margin-bottom: 10px;">{{ user.username }}</h1>
-                <p style="color: #666; font-size: 1.1em;">Member since: {{ user.date_joined|date:"F d, Y" }}</p>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <p style="color: #666; font-size: 1.1em; margin: 0;">Member since: {{ user.date_joined|date:"F d, Y" }}</p>
+                    <span style="color: #ff6347; font-weight: bold; margin: 0 0 0 15px;">Level {{ user_points.current_level }} {{ current_level.title }}</span>
+                </div>
             </div>
+            
+           
+                
         </div>
     </div>
 
@@ -31,59 +38,427 @@
                 <p style="color: #666;">Recipes Saved</p>
             </div>
             <div style="background-color: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
-                <h3 style="color: #ff6347; font-size: 2em; margin-bottom: 5px;">0</h3>
+                <h3 style="color: #ff6347; font-size: 2em; margin-bottom: 5px;">{{ tried_recipes_count }}</h3>
                 <p style="color: #666;">Recipes Tried</p>
             </div>
         </div>
 
-        <!-- My Recipes Section -->
-        <h2 style="color: #ff6347; margin-bottom: 20px;">My Recipes</h2>
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-    {% for recipe in created_recipes %}
-         <div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); overflow: hidden;">
-            <div style="width: 100%; height: 150px; background-image: url('https://via.placeholder.com/400x150'); background-size: cover; background-position: center;"></div>
-            <div style="padding: 15px;">
-                <div style="font-size: 1.2em; font-weight: bold; color: #ff6347; margin-bottom: 10px;">{{recipe.title}}</div>
-                <div style="color: #555; margin-bottom: 10px; line-height: 1.4;">{{recipe.description}}</div>
-                <div style="font-size: 0.8em; color: #888; margin-bottom: 10px;">{{recipe.created_at|date:"F d, Y"}}</div>
-                <div style="display: flex; gap: 10px;">
-                    <a href="{% url 'recipes-detail' recipe.pk %}" style="color: #ff6347; text-decoration: none; font-weight: bold;">View Recipe →</a>
-                    <a href="{% url 'recipes-update' recipe.pk %}" style="color: #ff6347; text-decoration: none; font-weight: bold;">Edit</a>
-                    <a href="{% url 'recipes-delete' recipe.pk %}" style="color: #ff6347; text-decoration: none; font-weight: bold;">Delete</a>
+        <div style="background-color: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;">
+            <h3 style="color: #ff6347; font-size: 2em; margin-bottom: 5px;">{{ user_points.total_points }}</h3>
+            <p style="color: #666;">Total Points</p>
+        </div>
+        
+        <!-- Level Progress Bar Section -->
+        <div style="background-color: white; padding: 25px; border-radius: 10px; margin-bottom: 40px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <h2 style="color: #ff6347; margin: 0;">Level {{ user_points.current_level }}: {{ current_level.title }}</h2>
+                    {% if next_level %}
+                        <p style="color: #666; margin: 5px 0 0 0;">{{ user_points.total_points }} / {{ next_level.points_required }} points to next level</p>
+                    {% else %}
+                        <p style="color: #666; margin: 5px 0 0 0;">Maximum Level Reached!</p>
+                    {% endif %}
+                </div>
+                <div style="background-color: #fff3e0; padding: 10px 15px; border-radius: 50px; font-weight: bold; color: #ff6347;">
+                    {{ progress_percent }}% Complete
                 </div>
             </div>
-        </div>
-    {% empty %}
-        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background-color: white; border-radius: 10px;">
-            <p style="color: #666; margin-bottom: 20px;">You haven't created any recipes yet!</p>
-            <a href="{% url 'recipes-create' %}" style="display: inline-block; padding: 10px 20px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Create Your First Recipe</a>
-        </div>
-    {% endfor %}
-</div>
-    <!-- Saved Recipes Section -->
-    <h2 style="color: #ff6347; margin-bottom: 20px;">Saved Recipes</h2>
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-        {% for saved in saved_recipes %}
-            <div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); overflow: hidden; transition: transform 0.2s ease;">
-                <div style="width: 100%; height: 150px; background-image: url('https://via.placeholder.com/400x150'); background-size: cover; background-position: center;"></div>
-                <div style="padding: 15px;">
-                    <div style="font-size: 1.2em; font-weight: bold; color: #ff6347; margin-bottom: 10px;">
-                        <a href="{% url 'recipes-detail' saved.recipe.pk %}" style="text-decoration: none; color: #ff6347;">
-                            {{ saved.recipe.title }}
-                        </a>
-                    </div>
-                    <div style="color: #555; margin-bottom: 10px; line-height: 1.4;">{{ saved.recipe.description }}</div>
-                    <div style="font-size: 0.8em; color: #888; margin-bottom: 10px;">Saved on {{ saved.saved_at|date:"F d, Y" }}</div>
+            
+            <!-- Progress Bar -->
+            <div style="background-color: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden; margin-bottom: 15px;">
+                <div style="background-color: #ff6347; height: 100%; width: {{ progress_percent }}%; border-radius: 10px; transition: width 0.5s ease-in-out;"></div>
+            </div>
+            
+            <!-- Current Level Reward -->
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <h3 style="color: #ff6347; font-size: 1.1em; margin: 0 0 5px 0;">Current Level Reward</h3>
+                <p style="margin: 0; font-weight: bold;">{{ current_level.reward }}</p>
+                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">{{ current_level.reward_description }}</p>
+            </div>
+            
+            <!-- Next Level Preview (if not max level) -->
+            {% if next_level %}
+                <div style="padding: 15px; border: 1px dashed #ddd; border-radius: 8px;">
+                    <h3 style="color: #888; font-size: 1.1em; margin: 0 0 5px 0;">Next Level: {{ next_level.title }}</h3>
+                    <p style="margin: 0; font-weight: bold; color: #888;">{{ next_level.reward }}</p>
+                    <p style="margin: 5px 0 0 0; color: #999; font-size: 0.9em;">{{ next_level.reward_description }}</p>
                 </div>
-            </div>
-        {% empty %}
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background-color: white; border-radius: 10px;">
-                <p style="color: #666; margin-bottom: 20px;">You haven't saved any recipes yet!</p>
-            </div>
-        {% endfor %}
-    </div>
+            {% endif %}
+        </div>
+        
+        <!-- Achievements Section with Unicode Emoji -->
+        <h2 style="color: #ff6347; margin: 40px 0 20px 0;">My Achievements</h2>
+        <div style="background-color: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-bottom: 40px;">
+            {% if user_achievements %}
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                    {% for achievement in user_achievements %}
+                        <div style="text-align: center; padding: 15px; border-radius: 8px; background-color: #f9f9f9; transition: transform 0.2s ease;">
+                            <div style="width: 60px; height: 60px; background-color: #ff6347; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 10px auto; font-size: 1.8em;">
+                                {% if achievement.achievement.name == "First Recipe" %}🥇
+                                {% elif achievement.achievement.name == "Recipe Explorer" %}🧭
+                                {% elif achievement.achievement.name == "Recipe Master" %}👨‍🍳
+                                {% elif achievement.achievement.name == "Culinary Expert" %}🏆
+                                {% elif achievement.achievement.name == "Ingredient Collector" %}🧺
+                                {% elif achievement.achievement.name == "Kitchen Organizer" %}📝
+                                {% elif achievement.achievement.name == "Culinary Adventurer" %}🌎
+                                {% elif achievement.achievement.name == "Healthy Choices" %}🥗
+                                {% elif achievement.achievement.name == "Sweet Tooth" %}🍰
+                                {% elif achievement.achievement.name == "Quick & Easy Cook" %}⏱️
+                                {% elif achievement.achievement.name == "Meat Lover" %}🥩
+                                {% elif achievement.achievement.name == "Vegetarian Explorer" %}🥬
+                                {% elif achievement.achievement.name == "Breakfast Champion" %}🍳
+                                {% elif achievement.achievement.name == "Dinner Expert" %}🍽️
+                                {% elif achievement.achievement.name == "International Cuisine" %}🌮
+                                {% elif achievement.achievement.name == "Spice Master" %}🌶️
+                                {% else %}🎖️
+                                {% endif %}
+                            </div>
+                            <h3 style="font-size: 1.1em; margin: 0 0 5px 0; color: #333;">{{ achievement.achievement.name }}</h3>
+                            <p style="margin: 0; color: #666; font-size: 0.9em;">{{ achievement.achievement.description }}</p>
+                            <div style="margin-top: 10px; font-size: 0.8em; color: #888;">
+                                Earned on {{ achievement.earned_at|date:"F d, Y" }}
+                            </div>
+                            {% if achievement.achievement.points_reward > 0 %}
+                                <div style="background-color: #ff6347; color: white; border-radius: 20px; padding: 3px 10px; display: inline-block; margin-top: 8px; font-size: 0.85em; font-weight: bold;">
+                                    +{{ achievement.achievement.points_reward }} points
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div style="text-align: center; padding: 40px;">
+                    <p style="color: #888; margin-bottom: 15px;">You haven't earned any achievements yet!</p>
+                    <p style="color: #666;">Try more recipes to unlock achievements and earn bonus points.</p>
+                </div>
+            {% endif %}
+                
+            <!-- Achievement Progress Section -->
+            {% if achievement_progress %}
+                <h3 style="color: #ff6347; margin: 30px 0 15px 0;">Achievement Progress</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                    {% for progress in achievement_progress %}
+                        <div style="padding: 15px; border-radius: 8px; background-color: #f5f5f5; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; margin-bottom: 5px;">{{ progress.display_name }}</div>
+                                <div style="font-size: 0.9em; color: #666;">{{ progress.count }} / {{ progress.requirement }} completed</div>
+                            </div>
+                            <div style="width: 50px; height: 50px; position: relative;">
+                                <svg viewBox="0 0 36 36" style="width: 100%; height: 100%;">
+                                    <!-- Gray background circle -->
+                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e6e6e6" stroke-width="3" />
+                                    <!-- Colored progress circle -->
+                                    <path d="M18 2.0845
+                                        a 15.9155 15.9155 0 0 1 0 31.831
+                                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                                        fill="none"
+                                        stroke="#ff6347"
+                                        stroke-width="3"
+                                        stroke-dasharray="{{ progress.percentage }}, 100"
+                                        stroke-linecap="round" />
+                                    <!-- Percentage text -->
+                                    <text x="18" y="20.5" text-anchor="middle" style="font-size: 8px; font-weight: bold; fill: #333;">
+                                        {{ progress.percentage }}%
+                                    </text>
+                                </svg>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Add links to points history and achievements pages -->
+        <div style="display: flex; gap: 20px; margin-bottom: 40px;">
+            <a href="{% url 'points-history' %}" style="flex: 1; display: inline-block; color: white; text-decoration: none; background-color: #ff6347; padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold;">
+                View My Points History
+            </a>
+            
+            <a href="{% url 'achievements' %}" style="flex: 1; display: inline-block; color: white; text-decoration: none; background-color: #4CAF50; padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold;">
+                View All Achievements
+            </a>
+
+            <a href="{% url 'leaderboards' %}" style="flex: 1; display: inline-block; color: white; text-decoration: none; background-color: #2196F3; padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold;">
+                View Leaderboards
+            </a>
+        </div>
+
+    
 
 </div>
+
+        <!-- TABBED RECIPES SECTION  -->
+        <div style="background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-bottom: 40px; overflow: hidden;">
+            <h2 style="color: #ff6347; padding: 20px 20px 0 20px; margin-bottom: 10px;">My Recipe Collection</h2>
+            
+            <!-- Tab Navigation -->
+            <div style="display: flex; border-bottom: 1px solid #eee; margin: 0 20px 20px 20px;">
+                <button id="tab-created-recipes" class="tab-button active" data-content="content-my-recipes" style="padding: 10px 20px; background: none; border: none; border-bottom: 3px solid #ff6347; font-weight: bold; color: #ff6347; cursor: pointer; outline: none;">
+                    My Recipes ({{ created_recipes|length }})
+                </button>
+                <button id="tab-saved-recipes" class="tab-button" data-content="content-saved-recipes" style="padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; font-weight: bold; color: #888; cursor: pointer; outline: none;">
+                    Saved User Recipes ({{ saved_recipes|length }})
+                </button>
+                <button id="tab-dataset-recipes" class="tab-button" data-content="content-dataset-recipes" style="padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; font-weight: bold; color: #888; cursor: pointer; outline: none;">
+                    Saved Dataset Recipes ({{ saved_dataset_recipes|length }})
+                </button>
+                <button id="tab-tried-recipes" class="tab-button" data-content="content-tried-recipes" style="padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; font-weight: bold; color: #888; cursor: pointer; outline: none;">
+                    Tried Recipes ({{ tried_recipes|length }})
+                </button>
+            </div>
+            
+            <!-- Tab Content -->
+            <div style="padding: 0 20px 20px 20px;">
+                <!-- My Recipes Section -->
+                <div id="content-my-recipes" class="tab-content" style="display: block;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                        {% for recipe in created_recipes %}
+                            <div style="background-color: #f9f9f9; border-radius: 10px; overflow: hidden;">
+                                <!-- Recipe Image -->
+                                <div style="width: 100%; height: 150px; background-color: #f5f5f5; background-position: center; background-size: cover; display: flex; justify-content: center; align-items: center;">
+                                    {% if recipe.image %}
+                                        <img src="{{ recipe.image.url }}" alt="{{ recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% elif recipe.images and recipe.images != '[]' %}
+                                        <img src="{{ recipe|get_primary_image }}" alt="{{ recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% else %}
+                                        <div style="color: #aaa; font-style: italic;">No image available</div>
+                                    {% endif %}
+                                </div>            
+                                <div style="padding: 15px;">
+                                    <div style="font-size: 1.2em; font-weight: bold; color: #ff6347; margin-bottom: 10px;">{{recipe.title}}</div>
+                                    <div style="color: #555; margin-bottom: 10px; line-height: 1.4; max-height: 60px; overflow: hidden;">{{recipe.description}}</div>
+                                    <div style="font-size: 0.8em; color: #888; margin-bottom: 10px;">{{recipe.created_at|date:"F d, Y"}}</div>
+                                    <div style="display: flex; gap: 10px;">
+                                        <a href="{% url 'recipes-detail' recipe.pk %}" style="color: white; background-color: #ff6347; text-decoration: none; font-weight: bold; padding: 5px 10px; border-radius: 5px; font-size: 0.9em;">View Recipe</a>
+                                        <a href="{% url 'recipes-update' recipe.pk %}" style="color: #ff6347; text-decoration: none; font-weight: bold; padding: 5px 10px; border: 1px solid #ff6347; border-radius: 5px; font-size: 0.9em;">Edit</a>
+                                        <a href="{% url 'recipes-delete' recipe.pk %}" style="color: #ff6347; text-decoration: none; font-weight: bold; padding: 5px 10px; border: 1px solid #ff6347; border-radius: 5px; font-size: 0.9em;">Delete</a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px;">
+                                <p style="color: #666; margin-bottom: 20px;">You haven't created any recipes yet!</p>
+                                <a href="{% url 'recipes-create' %}" style="display: inline-block; padding: 10px 20px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Create Your First Recipe</a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+              
+                <!-- Saved Recipes Section -->
+                <div id="content-saved-recipes" class="tab-content" style="display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                        {% for saved in saved_recipes %}
+                            <div style="background-color: #f9f9f9; border-radius: 10px; overflow: hidden;">
+                                <!-- Recipe Image -->
+                                <div style="width: 100%; height: 150px; background-color: #f5f5f5; background-position: center; background-size: cover; display: flex; justify-content: center; align-items: center;">
+                                    {% if saved.recipe.image %}
+                                        <img src="{{ saved.recipe.image.url }}" alt="{{ saved.recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% else %}
+                                        <div style="color: #aaa; font-style: italic;">No image available</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div style="padding: 15px;">
+                                    <div style="font-size: 1.2em; font-weight: bold; color: #ff6347; margin-bottom: 10px;">
+                                        <a href="{% url 'recipes-detail' saved.recipe.id %}" style="text-decoration: none; color: #ff6347;">
+                                            {{ saved.recipe.title }}
+                                        </a>
+                                    </div>
+                                    <div style="color: #555; margin-bottom: 10px; line-height: 1.4; max-height: 60px; overflow: hidden;">
+                                        {% if saved.recipe.description %}
+                                            {{ saved.recipe.description }}
+                                        {% else %}
+                                            <em>No description available</em>
+                                        {% endif %}
+                                    </div>
+                                    <div style="font-size: 0.8em; color: #888; margin-bottom: 10px;">Saved on {{ saved.saved_at|date:"F d, Y" }}</div>
+                                    <a href="{% url 'recipes-detail' saved.recipe.id %}" style="color: white; background-color: #ff6347; text-decoration: none; font-weight: bold; padding: 5px 10px; border-radius: 5px; font-size: 0.9em; display: inline-block;">View Recipe</a>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px;">
+                                <p style="color: #666; margin-bottom: 20px;">You haven't saved any recipes yet!</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Saved Dataset Recipes Section -->
+                <div id="content-dataset-recipes" class="tab-content" style="display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                        {% for recipe in saved_dataset_recipes %}
+                            <div style="background-color: #f9f9f9; border-radius: 10px; overflow: hidden;">
+                                <!-- Recipe Image -->
+                                <div style="width: 100%; height: 150px; background-color: #f5f5f5; background-position: center; background-size: cover; display: flex; justify-content: center; align-items: center;">
+                                    {% if recipe.images and recipe.images != '[]' %}
+                                        <img src="{{ recipe|get_primary_image }}" alt="{{ recipe.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% else %}
+                                        <div style="color: #aaa; font-style: italic;">No image available</div>
+                                    {% endif %}
+                                </div>
+                                <!-- Recipe Content -->
+                                <div style="padding: 15px;">
+                                    <div style="font-size: 1.2em; font-weight: bold; color: #ff6347; margin-bottom: 10px;">
+                                        <a href="{% url 'dataset-recipe-detail' recipe.id %}" style="text-decoration: none; color: #ff6347;">
+                                            {{ recipe.name }}
+                                        </a>
+                                    </div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; color: #666; font-size: 0.9em;">
+                                        <span>Prep: {{ recipe.get_prep_time_display }}</span>
+                                        <span>•</span>
+                                        <span>Calories: {{ recipe.calories }}</span>
+                                    </div>
+                                    <a href="{% url 'dataset-recipe-detail' recipe.id %}" style="color: white; background-color: #ff6347; text-decoration: none; font-weight: bold; padding: 5px 10px; border-radius: 5px; font-size: 0.9em; display: inline-block; margin-top: 10px;">View Recipe</a>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px;">
+                                <p style="color: #666; margin-bottom: 20px;">You haven't saved any dataset recipes yet.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Tried Recipes Section -->
+                <div id="content-tried-recipes" class="tab-content" style="display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                        {% for tried in tried_recipes %}
+                            <div style="background-color: #f9f9f9; border-radius: 10px; overflow: hidden;">
+                                <div style="width: 100%; height: 150px; background-color: #f5f5f5; background-position: center; background-size: cover; display: flex; justify-content: center; align-items: center;">
+                                    {% if tried.recipe and tried.recipe.image %}
+                                        <img src="{{ tried.recipe.image.url }}" alt="{{ tried.recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% elif tried.recipe and tried.recipe.images and tried.recipe.images != '[]' %}
+                                        <img src="{{ tried.recipe|get_primary_image }}" alt="{{ tried.recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% elif tried.dataset_recipe and tried.dataset_recipe.images %}
+                                        <img src="{{ tried.dataset_recipe|get_primary_image }}" alt="{{ tried.dataset_recipe.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% else %}
+                                        <div style="color: #aaa; font-style: italic;">No image available</div>
+                                    {% endif %}
+                                </div>
+                                <div style="padding: 15px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <div style="font-size: 1.2em; font-weight: bold; color: #ff6347;">
+                                            {% if tried.recipe %}
+                                                <a href="{% url 'recipes-detail' tried.recipe.pk %}" style="text-decoration: none; color: #ff6347;">
+                                                    {{ tried.recipe.title }}
+                                                </a>
+                                            {% elif tried.dataset_recipe %}
+                                                <a href="{% url 'dataset-recipe-detail' tried.dataset_recipe.pk %}" style="text-decoration: none; color: #ff6347;">
+                                                    {{ tried.dataset_recipe.name }}
+                                                </a>
+                                            {% else %}
+                                                <span style="color: #ff6347;">Recipe no longer available</span>
+                                            {% endif %}
+                                        </div>
+                                        <!-- Points badge  -->
+                                        {% if tried.points_earned %}
+                                            <div style="background-color: #ff6347; color: white; padding: 5px 10px; border-radius: 15px; font-weight: bold; font-size: 0.9em;">
+                                                +{{ tried.points_earned }} points
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div style="color: #555; margin-bottom: 10px; line-height: 1.4; max-height: 60px; overflow: hidden;">
+                                        {% if tried.recipe %}
+                                            {{ tried.recipe.description }}
+                                        {% elif tried.dataset_recipe %}
+                                            {{ tried.dataset_recipe.description }}
+                                        {% else %}
+                                            No description available
+                                        {% endif %}
+                                    </div>
+                                    <div style="font-size: 0.8em; color: #888; margin-bottom: 10px;">Tried on {{ tried.tried_at|date:"F d, Y" }}</div>
+                                    {% if tried.recipe %}
+                                        <a href="{% url 'recipes-detail' tried.recipe.pk %}" style="color: white; background-color: #ff6347; text-decoration: none; font-weight: bold; padding: 5px 10px; border-radius: 5px; font-size: 0.9em; display: inline-block;">View Recipe</a>
+                                    {% elif tried.dataset_recipe %}
+                                        <a href="{% url 'dataset-recipe-detail' tried.dataset_recipe.pk %}" style="color: white; background-color: #ff6347; text-decoration: none; font-weight: bold; padding: 5px 10px; border-radius: 5px; font-size: 0.9em; display: inline-block;">View Recipe</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px;">
+                                <p style="color: #666; margin-bottom: 20px;">You haven't tried any recipes yet!</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Debug - check if we can find the buttons
+        console.log('Document loaded');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        console.log('Found tab buttons:', tabButtons.length);
+        
+        const tabContents = document.querySelectorAll('.tab-content');
+        console.log('Found tab contents:', tabContents.length);
+        
+        if (tabButtons.length === 0 || tabContents.length === 0) {
+            console.error('Tab buttons or contents not found');
+            return;
+        }
+        
+        // Make sure content-my-recipes exists
+        const myRecipesTab = document.getElementById('content-my-recipes');
+        if (!myRecipesTab) {
+            console.error('content-my-recipes element not found');
+        }
+        
+        // Set initial active tab explicitly
+        const initialTab = document.getElementById('tab-created-recipes');
+        if (initialTab) {
+            initialTab.classList.add('active');
+            initialTab.style.color = '#ff6347';
+            initialTab.style.borderBottomColor = '#ff6347';
+            
+            const initialContent = document.getElementById('content-my-recipes');
+            if (initialContent) {
+                initialContent.style.display = 'block';
+            }
+        }
+        
+        // Add click event listeners to all tab buttons
+        tabButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                console.log('Tab clicked:', this.id);
+                
+                // Get the content ID this button controls
+                const tabId = this.getAttribute('data-content');
+                console.log('Target content:', tabId);
+                
+                // First hide all tabs and remove active state
+                tabButtons.forEach(function(btn) {
+                    btn.classList.remove('active');
+                    btn.style.color = '#888';
+                    btn.style.borderBottomColor = 'transparent';
+                });
+                
+                tabContents.forEach(function(content) {
+                    content.style.display = 'none';
+                });
+                
+                // Activate the clicked tab
+                this.classList.add('active');
+                this.style.color = '#ff6347';
+                this.style.borderBottomColor = '#ff6347';
+                
+                // Show the corresponding content
+                const contentElement = document.getElementById(tabId);
+                if (contentElement) {
+                    contentElement.style.display = 'block';
+                } else {
+                    console.error('Content element not found:', tabId);
+                }
+            });
+        });
+    });
+</script>
 
 {% endblock content %}
