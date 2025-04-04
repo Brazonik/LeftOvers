@@ -1,0 +1,50 @@
+{% extends "recipes/base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Use Tracked Ingredients</h5>
+        </div>
+        <div class="card-body">
+            <p>You're about to mark the recipe "<strong>{{ recipe.title }}</strong>" as tried.</p>
+            <p>The following ingredients from your tracking list will be used:</p>
+            
+            <ul class="list-group mb-4">
+                {% for ingredient in matched_ingredients %}
+                <li class="list-group-item">
+                    {{ ingredient.ingredient_name }}
+                    {% if ingredient.quantity %}<span class="text-muted">({{ ingredient.quantity }})</span>{% endif %}
+                    {% if ingredient.expiration_date %}<span class="{% if ingredient.is_expired %}text-danger{% endif %}">
+                        Expires: {{ ingredient.expiration_date }}
+                    </span>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <p class="alert alert-warning">
+                These ingredients will be removed from your tracking list. Do you want to continue?
+            </p>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+                <form method="post" action="{{ form_action }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm" value="1">
+                    <button type="submit" class="btn btn-danger">Use Ingredients & Mark as Tried</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% if replace_history %}
+
+<script>
+    // Replace the current history entry with the referring page
+    // This prevents the back button from going to this confirmation page
+    if (document.referrer && document.referrer !== window.location.href) {
+        history.replaceState(null, '', document.referrer);
+    }
+</script>
+{% endif %}
+
+{% endblock %}
