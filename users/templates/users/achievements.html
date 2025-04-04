@@ -1,0 +1,131 @@
+{% extends 'recipes/base.html' %}
+{% load recipe_filters %}
+{% block content %}
+
+<div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 20px;">
+    <div style="max-width: 1000px; margin: 0 auto;">
+        
+        <!-- Header -->
+        <div style="margin-bottom: 20px;">
+            <h1 style="color: #ff6347; margin-bottom: 5px;">My Achievements</h1>
+            <p style="color: #666;">Track your cooking journey and unlock special achievements as you try more recipes!</p>
+        </div>
+        
+        <!-- Earned achievements section -->
+        <h2 style="color: #ff6347; margin: 20px 0 10px 0;">Earned Achievements</h2>
+        {% if earned_achievements %}
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+                {% for user_achievement in earned_achievements %}
+                    <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: transform 0.2s;">
+                        <div style="width: 70px; height: 70px; border-radius: 50%; background-color: #ff6347; color: white; display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto; font-size: 2.2em;">
+                            {% if user_achievement.achievement.name == "First Recipe" %}🥇
+                            {% elif user_achievement.achievement.name == "Recipe Explorer" %}🧭
+                            {% elif user_achievement.achievement.name == "Recipe Master" %}👨‍🍳
+                            {% elif user_achievement.achievement.name == "Culinary Expert" %}🏆
+                            {% elif user_achievement.achievement.name == "Ingredient Collector" %}🧺
+                            {% elif user_achievement.achievement.name == "Kitchen Organizer" %}📝
+                            {% elif user_achievement.achievement.name == "Culinary Adventurer" %}🌎
+                            {% elif user_achievement.achievement.name == "Healthy Choices" %}🥗
+                            {% elif user_achievement.achievement.name == "Sweet Tooth" %}🍰
+                            {% elif user_achievement.achievement.name == "Quick & Easy Cook" %}⏱️
+                            {% elif user_achievement.achievement.name == "Meat Lover" %}🥩
+                            {% elif user_achievement.achievement.name == "Vegetarian Explorer" %}🥬
+                            {% elif user_achievement.achievement.name == "Breakfast Champion" %}🍳
+                            {% elif user_achievement.achievement.name == "Dinner Expert" %}🍽️
+                            {% elif user_achievement.achievement.name == "International Cuisine" %}🌮
+                            {% elif user_achievement.achievement.name == "Spice Master" %}🌶️
+                            {% else %}🎖️
+                            {% endif %}
+                        </div>
+                        <h3 style="font-size: 1.2em; margin-bottom: 8px; color: #333; text-align: center;">{{ user_achievement.achievement.name }}</h3>
+                        <p style="color: #666; margin-bottom: 15px; font-size: 0.95em; text-align: center; line-height: 1.4;">{{ user_achievement.achievement.description }}</p>
+                        <div style="font-size: 0.85em; color: #888; margin-bottom: 10px; text-align: center;">Earned on {{ user_achievement.earned_at|date:"F d, Y" }}</div>
+                        {% if user_achievement.achievement.points_reward > 0 %}
+                            <div style="background-color: #ff6347; color: white; padding: 5px 12px; border-radius: 20px; display: block; text-align: center; font-size: 0.9em; font-weight: bold; margin: 0 auto; width: fit-content;">
+                                +{{ user_achievement.achievement.points_reward }} points
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="background-color: white; padding: 30px; margin-bottom: 30px; text-align: center; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <p style="color: #666; font-size: 1.1em; margin-bottom: 10px;">You haven't earned any achievements yet.</p>
+                <p style="color: #888; margin-top: 5px;">Try more recipes to unlock achievements and earn bonus points!</p>
+            </div>
+        {% endif %}
+        
+        <!-- Available achievements section -->
+        <h2 style="color: #ff6347; margin: 30px 0 15px 0;">Available Achievements</h2>
+        {% if remaining_achievements %}
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                {% for achievement in remaining_achievements %}
+                    <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <div style="width: 50px; height: 50px; border-radius: 50%; background-color: #e0e0e0; color: #666; display: flex; justify-content: center; align-items: center; margin-right: 15px; font-size: 1.5em;">
+                                {% if achievement.name == "First Recipe" %}🥇
+                                {% elif achievement.name == "Recipe Explorer" %}🧭
+                                {% elif achievement.name == "Recipe Master" %}👨‍🍳
+                                {% elif achievement.name == "Culinary Expert" %}🏆
+                                {% elif achievement.name == "Ingredient Collector" %}🧺
+                                {% elif achievement.name == "Kitchen Organizer" %}📝
+                                {% elif achievement.name == "Culinary Adventurer" %}🌎
+                                {% elif achievement.name == "Healthy Choices" %}🥗
+                                {% elif achievement.name == "Sweet Tooth" %}🍰
+                                {% elif achievement.name == "Quick & Easy Cook" %}⏱️
+                                {% elif achievement.name == "Meat Lover" %}🥩
+                                {% elif achievement.name == "Vegetarian Explorer" %}🥬
+                                {% elif achievement.name == "Breakfast Champion" %}🍳
+                                {% elif achievement.name == "Dinner Expert" %}🍽️
+                                {% elif achievement.name == "International Cuisine" %}🌮
+                                {% elif achievement.name == "Spice Master" %}🌶️
+                                {% else %}🎖️
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h3 style="font-size: 1.2em; margin: 0 0 5px 0; color: #333;">{{ achievement.name }}</h3>
+                                <p style="color: #666; margin: 0; font-size: 0.95em; line-height: 1.4;">{{ achievement.description }}</p>
+                            </div>
+                        </div>
+                        
+                        {% for progress in achievement_progress %}
+                            {% if progress.achievement_id == achievement.id %}
+                                <!-- Progress bar -->
+                                <div style="margin-top: 15px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                        <span style="font-size: 0.9em; color: #666; font-weight: 500;">Progress: {{ progress.current }}/{{ achievement.requirement_count }}</span>
+                                        <span style="font-size: 0.9em; color: #ff6347; font-weight: bold;">{{ progress.percent }}%</span>
+                                    </div>
+                                    <div style="height: 10px; background-color: #f0f0f0; border-radius: 5px; overflow: hidden;">
+                                        <div style="height: 100%; width: {{ progress.percent }}%; background-color: #ff6347; border-radius: 5px; transition: width 0.5s ease-in-out;"></div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if achievement.points_reward > 0 %}
+                            <div style="margin-top: 15px; text-align: right;">
+                                <span style="background-color: #f5f5f5; color: #666; padding: 5px 12px; border-radius: 20px; display: inline-block; font-weight: 500;">
+                                    Reward: {{ achievement.points_reward }} points
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="background-color: white; padding: 30px; text-align: center; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <p style="color: #666; font-size: 1.1em; margin-bottom: 10px;">Congratulations! You've earned all available achievements!</p>
+                <p style="color: #888; margin-top: 5px;">Check back later for new achievements.</p>
+            </div>
+        {% endif %}
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="{% url 'profile' %}" style="display: inline-block; padding: 10px 20px; background-color: #ff6347; color: white; text-decoration: none; font-weight: bold; border-radius: 5px; transition: background-color 0.2s;">
+                Back to Profile
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
