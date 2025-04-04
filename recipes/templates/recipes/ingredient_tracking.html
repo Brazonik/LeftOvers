@@ -1,16 +1,22 @@
 {% extends "recipes/base.html" %}
 {% block content %}
+{% load recipe_filters %}
+{% csrf_token %}
+
 <div class="container mt-4">
     <!-- Add Ingredient Form -->
     <div class="card mb-4">
         <div class="card-body">
             <h3 class="text-danger mb-3">Add New Ingredient</h3>
-            <form id="trackIngredientForm">
+            <form id="add-ingredient-form" method="post">
                 {% csrf_token %}
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label for="ingredientName" class="form-label">Ingredient Name</label>
-                        <input type="text" class="form-control" id="ingredientName" required>
+                        <input type="text" class="form-control" id="ingredientName" required list="ingredient-suggestions">
+                        <datalist id="ingredient-suggestions">
+                            <!-- Common ingredient suggestions will be populated by JavaScript -->
+                        </datalist>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label for="quantity" class="form-label">Quantity</label>
@@ -26,20 +32,47 @@
         </div>
     </div>
 
+    <!-- Loading Overlay - Single Implementation -->
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 9999; text-align: center; padding-top: 20%;">
+        <div class="card" style="max-width: 500px; margin: 0 auto;">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Processing Your Request</h5>
+            </div>
+            <div class="card-body">
+                <div class="spinner-border text-danger mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p id="loading-message" class="mb-3">Please wait while we process your request...</p>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                </div>
+                <p class="text-muted small mb-0">This may take a moment as we analyze our recipe database.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Tracked Ingredients -->
     <h2 class="text-danger mb-4">Your Tracked Ingredients</h2>
     <div class="row mb-4">
         {% for ingredient in tracked_ingredients %}
             <div class="col-md-3 mb-3">
-                <div class="card">
+                <div class="card h-100" data-ingredient-id="{{ ingredient.id }}">
                     <div class="card-body">
                         <h5 class="card-title">{{ ingredient.ingredient_name }}</h5>
                         {% if ingredient.quantity %}
                             <p class="card-text">Quantity: {{ ingredient.quantity }}</p>
                         {% endif %}
                         {% if ingredient.expiration_date %}
-                            <p class="card-text">Expires: {{ ingredient.expiration_date }}</p>
+                            <p class="card-text {% if ingredient.is_expired %}text-danger{% endif %}">
+                                Expires: {{ ingredient.expiration_date }}
+                                {% if ingredient.is_expired %}<span class="badge bg-danger">Expired</span>{% endif %}
+                            </p>
                         {% endif %}
+                        <button class="btn btn-outline-danger btn-sm remove-ingredient" 
+                                data-id="{{ ingredient.id }}"
+                                style="width: 100%; margin-top: 10px;">
+                            Remove Ingredient
+                        </button>
                     </div>
                 </div>
             </div>
@@ -53,46 +86,123 @@
     </div>
 
     <!-- Matching Recipes -->
-    <h2 class="text-danger mb-4">
-        Matching Recipes 
-        {% if perfect_matches %}({{ perfect_matches }} perfect matches){% endif %}
-    </h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-danger m-0">
+            Matching Recipes 
+            {% if perfect_matches %}({{ perfect_matches }} perfect matches){% endif %}
+            {% if good_matches %}<span class="text-muted">({{ good_matches }} great matches)</span>{% endif %}
+        </h2>
+        
+        <!-- Filter Toggle Button -->
+        <form method="GET" id="filterForm">
+            <input type="hidden" name="show_all" id="showAllInput" value="{{ show_all|yesno:'true,false' }}">
+            {% if selected_cuisine %}<input type="hidden" name="cuisine" value="{{ selected_cuisine }}">{% endif %}
+            {% if selected_meal_type %}<input type="hidden" name="meal_type" value="{{ selected_meal_type }}">{% endif %}
+            {% if selected_max_missing %}<input type="hidden" name="max_missing" value="{{ selected_max_missing }}">{% endif %}
+            {% if selected_sort %}<input type="hidden" name="sort_by" value="{{ selected_sort }}">{% endif %}
+            <button type="button" id="toggleButton" class="btn {% if show_all %}btn-outline-secondary{% else %}btn-outline-primary{% endif %}">
+                {% if show_all %}
+                    Show Recipes with Images Only
+                {% else %}
+                    Show All Recipes
+                {% endif %}
+            </button>
+        </form>
+    </div>
+    
+    <!-- Recipe Cards Section -->
     <div class="row">
         {% for match in matched_recipes %}
-            <div class="col-md-4 mb-4">
-                <div class="card h-100 {% if match.is_perfect_match %}border-success{% endif %}">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ match.name }}</h5>
-                        <p class="card-text">
-                            Match: {{ match.match_percentage }}%
-                            {% if match.is_perfect_match %}
-                                <span class="badge bg-success">Perfect Match!</span>
+            <div class="col-md-4 mb-4 recipe-card {% if not match.recipe|has_image %}no-image{% endif %}" style="{% if not match.recipe|has_image and not show_all %}display: none;{% endif %}">
+                <div class="card h-100 {% if match.is_perfect_match %}border-success{% endif %}" style="overflow: hidden;">
+                    <!-- Recipe Image -->
+                    {% if match.recipe|has_image %}
+                        <div style="height: 180px; overflow: hidden;">
+                            <img src="{{ match.recipe|get_primary_image }}" alt="{{ match.recipe|get_title }}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                    {% else %}
+                        <div style="height: 100px; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                            <span style="color: #999; font-style: italic;">No Image Available</span>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Match Percentage Badge -->
+                    <div style="position: absolute; top: 10px; right: 10px;">
+                        <span class="badge {% if match.is_perfect_match %}bg-success{% elif match.weighted_percentage >= 40 %}bg-primary{% else %}bg-info{% endif %}" 
+                              style="font-size: 0.9em; padding: 5px 10px;">
+                            {% if match.weighted_percentage %}
+                                {{ match.weighted_percentage }}% Match
+                            {% else %}
+                                {{ match.match_percentage }}% Match
                             {% endif %}
-                        </p>
+                        </span>
+                    </div>
+                    
+                    <div class="card-body">
+                        <h5 class="card-title" style="color: #ff6347;">{{ match.name }}</h5>
                         
-                        <h6>Matching Ingredients:</h6>
-                        <ul class="list-unstyled">
-                            {% for ing in match.matching_ingredients %}
-                                <li class="text-success">✓ {{ ing }}</li>
-                            {% endfor %}
-                        </ul>
+                        <!-- Recipe Info Row -->
+                        <div style="display: flex; flex-wrap: wrap; margin-bottom: 15px; font-size: 0.85em;">
+                            <div style="margin-right: 15px;">
+                                <span style="color: #666;">PREP:</span>
+                                <span>{{ match.recipe.prep_time|format_duration }}</span>
+                            </div>
+                            <div style="margin-right: 15px;">
+                                <span style="color: #666;">COOK:</span>
+                                <span>{{ match.recipe.cook_time|format_duration }}</span>
+                            </div>
+                            {% if match.cuisine %}
+                            <div style="margin-right: 15px;">
+                                <span style="color: #666;">CUISINE:</span>
+                                <span>{{ match.cuisine|truncatechars:20 }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
                         
-                        {% if match.missing_ingredients %}
-                            <h6>Additional Ingredients Needed:</h6>
-                            <ul class="list-unstyled">
-                                {% for ing in match.missing_ingredients %}
-                                    <li class="text-warning">+ {{ ing }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% endif %}
+                        <!-- Ingredient Matching Section -->
+                        <div style="display: flex; margin-bottom: 15px;">
+                            <div style="flex: 1; padding-right: 10px; {% if match.missing_ingredients %}border-right: 1px solid #eee;{% endif %}">
+                                <h6 style="font-size: 0.9em; color: #28a745;">You Have:</h6>
+                                <ul class="list-unstyled" style="font-size: 0.85em; max-height: 120px; overflow-y: auto;">
+                                    {% for ing in match.matching_ingredients %}
+                                        <li>
+                                            <span style="color: #28a745;">✓</span> {{ ing }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            
+                            {% if match.missing_ingredients %}
+                            <div style="flex: 1; padding-left: 10px;">
+                                <h6 style="font-size: 0.9em; color: #ffc107;">You Need ({{ match.missing_ingredients|length }}):</h6>
+                                <ul class="list-unstyled" style="font-size: 0.85em; max-height: 120px; overflow-y: auto;">
+                                    {% for ing in match.missing_ingredients %}
+                                        <li>
+                                            <span style="color: #ffc107;">+</span> {{ ing }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
                         
-                        {% if match.is_dataset %}
-                            <a href="{% url 'dataset-recipe-detail' match.recipe.pk %}" 
-                               class="btn btn-outline-danger mt-2">View Recipe</a>
-                        {% else %}
-                            <a href="{% url 'recipes-detail' match.recipe.pk %}" 
-                               class="btn btn-outline-danger mt-2">View Recipe</a>
-                        {% endif %}
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 10px;">
+                            {% if match.is_dataset %}
+                                <a href="{% url 'dataset-recipe-detail' match.recipe.pk %}" 
+                                   class="btn btn-danger btn-sm">View Recipe</a>
+                            {% else %}
+                                <a href="{% url 'recipes-detail' match.recipe.pk %}" 
+                                   class="btn btn-danger btn-sm">View Recipe</a>
+                            {% endif %}
+                            
+                            <button class="btn btn-outline-success btn-sm add-to-shopping-list"
+                                    data-recipe-id="{{ match.recipe.pk }}"
+                                    data-is-dataset="{{ match.is_dataset|yesno:'true,false' }}">
+                                Add to Shopping List
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -104,17 +214,22 @@
             </div>
         {% endfor %}
     </div>
+    
+    <!-- No visible recipes message -->
+    <div id="noVisibleRecipesMessage" class="alert alert-info" style="display: none;">
+        No recipes with images found. <button type="button" id="showAllFromMessage" class="btn btn-link p-0 align-baseline">Show all recipes</button>
+    </div>
 </div>
 
 <!-- Pagination Section -->
 {% if matched_recipes.has_other_pages %}
-<div style="display: flex; justify-content: center; align-items: center; margin: 30px 0; margin-left: 270px;">
+<div style="display: flex; justify-content: center; align-items: center; margin: 30px 0;">
     {% if matched_recipes.has_previous %}
-        <a href="?page=1{% if query %}&q={{ query }}{% endif %}" 
+        <a href="?page=1{% if show_all %}&show_all=true{% endif %}{% if selected_cuisine %}&cuisine={{ selected_cuisine }}{% endif %}{% if selected_meal_type %}&meal_type={{ selected_meal_type }}{% endif %}{% if selected_max_missing %}&max_missing={{ selected_max_missing }}{% endif %}{% if selected_sort %}&sort_by={{ selected_sort }}{% endif %}" 
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             First
         </a>
-        <a href="?page={{ matched_recipes.previous_page_number }}{% if query %}&q={{ query }}{% endif %}"
+        <a href="?page={{ matched_recipes.previous_page_number }}{% if show_all %}&show_all=true{% endif %}{% if selected_cuisine %}&cuisine={{ selected_cuisine }}{% endif %}{% if selected_meal_type %}&meal_type={{ selected_meal_type }}{% endif %}{% if selected_max_missing %}&max_missing={{ selected_max_missing }}{% endif %}{% if selected_sort %}&sort_by={{ selected_sort }}{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Previous
         </a>
@@ -125,11 +240,11 @@
     </span>
 
     {% if matched_recipes.has_next %}
-        <a href="?page={{ matched_recipes.next_page_number }}{% if query %}&q={{ query }}{% endif %}"
+        <a href="?page={{ matched_recipes.next_page_number }}{% if show_all %}&show_all=true{% endif %}{% if selected_cuisine %}&cuisine={{ selected_cuisine }}{% endif %}{% if selected_meal_type %}&meal_type={{ selected_meal_type }}{% endif %}{% if selected_max_missing %}&max_missing={{ selected_max_missing }}{% endif %}{% if selected_sort %}&sort_by={{ selected_sort }}{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Next
         </a>
-        <a href="?page={{ matched_recipes.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}"
+        <a href="?page={{ matched_recipes.paginator.num_pages }}{% if show_all %}&show_all=true{% endif %}{% if selected_cuisine %}&cuisine={{ selected_cuisine }}{% endif %}{% if selected_meal_type %}&meal_type={{ selected_meal_type }}{% endif %}{% if selected_max_missing %}&max_missing={{ selected_max_missing }}{% endif %}{% if selected_sort %}&sort_by={{ selected_sort }}{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Last
         </a>
@@ -137,43 +252,335 @@
 </div>
 {% endif %}
 
+<!-- CSRF Token for AJAX requests -->
+<form id="csrf-form">
+    {% csrf_token %}
+</form>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('trackIngredientForm');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingMessage = document.getElementById('loading-message');
     
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        console.log('Form submitted');
+    // Loading message rotation
+    const loadingMessages = [
+        "Analyzing your ingredients...",
+        "Searching through our recipe database...",
+        "Finding recipes that match your ingredients...",
+        "Looking for perfect matches...",
+        "Calculating ingredient matches...",
+        "Almost there! Sorting your results...",
+        "Finding the most relevant recipes for you..."
+    ];
+    let messageIndex = 0;
+    let messageInterval = null;
+    
+    // Show loading overlay with custom message
+    function showLoading(message) {
+        if (loadingMessage) loadingMessage.textContent = message || "Processing your request...";
+        if (loadingOverlay) loadingOverlay.style.display = 'block';
         
-        const formData = {
-            ingredient_name: document.getElementById('ingredientName').value,
-            quantity: document.getElementById('quantity').value,
-            expiration_date: document.getElementById('expirationDate').value
-        };
+        // Clear any existing interval
+        if (messageInterval) clearInterval(messageInterval);
         
-        console.log('Sending data:', formData);
-
-        fetch("{% url 'track_ingredient' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.error || 'Error adding ingredient');
+        // Start rotating messages for long operations
+        messageInterval = setInterval(function() {
+            if (loadingMessage) {
+                loadingMessage.textContent = loadingMessages[messageIndex];
+                messageIndex = (messageIndex + 1) % loadingMessages.length;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error adding ingredient');
+        }, 3000);
+        
+        // Store interval ID in session storage
+        sessionStorage.setItem('messageIntervalId', messageInterval);
+    }
+    
+    // Hide loading overlay and clear message rotation
+    function hideLoading() {
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        
+        // Clear message rotation interval
+        if (messageInterval) clearInterval(messageInterval);
+        messageInterval = null;
+        
+        // Clear from session storage
+        sessionStorage.removeItem('messageIntervalId');
+    }
+    
+    // Check if there are any visible recipe cards
+    function checkForVisibleRecipes() {
+        if (!{{ show_all|yesno:'true,false' }}) {
+            const visibleRecipes = document.querySelectorAll('.recipe-card:not([style*="display: none"])');
+            const noVisibleRecipesMessage = document.getElementById('noVisibleRecipesMessage');
+            
+            if (visibleRecipes.length === 0 && noVisibleRecipesMessage) {
+                noVisibleRecipesMessage.style.display = 'block';
+            } else if (noVisibleRecipesMessage) {
+                noVisibleRecipesMessage.style.display = 'none';
+            }
+        } else {
+            const noVisibleRecipesMessage = document.getElementById('noVisibleRecipesMessage');
+            if (noVisibleRecipesMessage) noVisibleRecipesMessage.style.display = 'none';
+        }
+    }
+    
+    // Get CSRF token
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    //  INITIALIZE COMMON INGREDIENTS SUGGESTIONS 
+    const commonIngredients = [
+        // Vegetables
+        'Tomatoes', 'Onions', 'Garlic', 'Bell Peppers', 'Carrots', 'Potatoes', 
+        'Lettuce', 'Spinach', 'Broccoli', 'Cauliflower', 'Zucchini', 'Cucumber',
+        'Corn', 'Mushrooms', 'Green Beans', 'Asparagus', 'Celery', 'Cabbage',
+        
+        // Fruits
+        'Apples', 'Bananas', 'Oranges', 'Lemons', 'Limes', 'Strawberries', 
+        'Blueberries', 'Raspberries', 'Pineapple', 'Grapes', 'Watermelon',
+        'Avocado', 'Mango', 'Peaches',
+        
+        // Proteins
+        'Chicken Breast', 'Ground Beef', 'Steak', 'Pork Chops', 'Bacon', 'Ham',
+        'Turkey', 'Sausage', 'Tofu', 'Eggs', 'Shrimp', 'Salmon', 'Tuna',
+        
+        // Dairy
+        'Milk', 'Butter', 'Yogurt', 'Cheddar Cheese', 'Parmesan Cheese',
+        'Mozzarella Cheese', 'Cream Cheese', 'Feta Cheese',
+        'Sour Cream',
+        
+        // Grains and Pasta
+        'Rice', 'Pasta', 'Spaghetti', 'Bread', 'Flour', 'Oats', 'Quinoa',
+        'Tortillas', 'Noodles',
+        
+        // Herbs and Spices
+        'Salt', 'Pepper', 'Basil', 'Oregano', 'Thyme', 'Rosemary', 'Cinnamon',
+        'Paprika', 'Cumin', 'Curry Powder', 'Chili Powder', 'Garlic Powder',
+        
+        // Condiments and Sauces
+        'Olive Oil', 'Vegetable Oil', 'Vinegar', 'Soy Sauce', 'Hot Sauce',
+        'Mayonnaise', 'Ketchup', 'Mustard', 'Honey', 'Maple Syrup',
+        'Peanut Butter', 'BBQ Sauce', 'Salsa'
+    ];
+    
+    // Populate ingredient suggestions
+    const datalist = document.getElementById('ingredient-suggestions');
+    if (datalist) {
+        commonIngredients.forEach(ingredient => {
+            const option = document.createElement('option');
+            option.value = ingredient;
+            datalist.appendChild(option);
+        });
+    }
+    
+   
+    
+    //FILTER TOGGLE BUTTON 
+    const toggleButton = document.getElementById('toggleButton');
+    const showAllInput = document.getElementById('showAllInput');
+    const filterForm = document.getElementById('filterForm');
+    const showAllFromMessage = document.getElementById('showAllFromMessage');
+    
+    // Initial check if there are visible recipes
+    checkForVisibleRecipes();
+    
+    if (toggleButton && showAllInput && filterForm) {
+        toggleButton.addEventListener('click', function() {
+            // Toggle the value
+            const currentValue = showAllInput.value === 'true';
+            showAllInput.value = !currentValue;
+            
+            // Show loading before submitting
+            showLoading("Updating recipe display preferences...");
+            
+            // Submit the form to reload with the new filter
+            filterForm.submit();
+        });
+    }
+    
+    if (showAllFromMessage && showAllInput && filterForm) {
+        showAllFromMessage.addEventListener('click', function() {
+            showAllInput.value = 'true';
+            
+            // Show loading before submitting
+            showLoading("Loading all recipes...");
+            
+            filterForm.submit();
+        });
+    }
+    
+    // ADD INGREDIENT FORM 
+    const addIngredientForm = document.getElementById('add-ingredient-form');
+    
+    if (addIngredientForm) {
+        addIngredientForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                ingredient_name: document.getElementById('ingredientName').value,
+                quantity: document.getElementById('quantity').value,
+                expiration_date: document.getElementById('expirationDate').value
+            };
+            
+            // Show loading overlay
+            showLoading("Adding ingredient to your tracked list...");
+            
+            fetch("{% url 'track_ingredient' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update loading message
+                    if (loadingMessage) {
+                        loadingMessage.textContent = "Refreshing recipe matches with your new ingredient...";
+                    }
+                    location.reload();
+                } else {
+                    // Hide loading overlay if there's an error
+                    hideLoading();
+                    alert(data.error || 'Error adding ingredient');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Hide loading overlay if there's an error
+                hideLoading();
+                alert('Error adding ingredient: ' + error.message);
+            });
+        });
+    }
+    
+    // REMOVE INGREDIENT FUNCTIONALITY 
+    const removeButtons = document.querySelectorAll('.remove-ingredient');
+    
+    removeButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Get the ingredient ID from data-id attribute
+            const ingredientId = this.getAttribute('data-id');
+            
+            if (!ingredientId) {
+                console.error('Could not find ingredient ID');
+                alert('Error: Could not identify which ingredient to remove');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to remove this ingredient?')) {
+                // Show loading overlay
+                showLoading("Removing ingredient from your tracked list...");
+                
+                // Make the fetch request
+                fetch(`/remove-tracked-ingredient/${ingredientId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`Server responded with status ${response.status}: ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Update loading message
+                        if (loadingMessage) {
+                            loadingMessage.textContent = "Updating recipe matches...";
+                        }
+                        // Reload the page to show updated list
+                        window.location.reload();
+                    } else {
+                        // Hide loading overlay if there's an error
+                        hideLoading();
+                        // Show error from server
+                        alert(data.error || 'Error removing ingredient');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Hide loading overlay if there's an error
+                    hideLoading();
+                    alert('Error removing ingredient: ' + error.message);
+                });
+            }
         });
     });
+
+    // ADD RECIPE TO SHOPPING LIST 
+    const shoppingListButtons = document.querySelectorAll('.add-to-shopping-list');
+    
+    shoppingListButtons.forEach(button => {
+        button.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            const recipeId = this.getAttribute('data-recipe-id');
+            const isDataset = this.getAttribute('data-is-dataset') === 'true';
+            
+            // Show loading overlay
+            showLoading("Adding recipe ingredients to your shopping list...");
+            
+            try {
+                const formData = new FormData();
+                formData.append('is_dataset', isDataset.toString());
+                
+                const response = await fetch(`/add-recipe-to-shopping-list/${recipeId}/`, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                // Hide loading overlay
+                hideLoading();
+                
+                if (data.success) {
+                    alert(data.message);
+                    
+                    if (confirm('Go to your shopping list?')) {
+                        window.location.href = "{% url 'shopping_list' %}";
+                    }
+                } else {
+                    alert(data.error || "Failed to add ingredients to shopping list");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                // Hide loading overlay
+                hideLoading();
+                alert("Failed to add ingredients to shopping list. Please try again.");
+            }
+        });
+    });
+    
+    // If we're coming back from a form submission, make sure loading overlay is hidden
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('sort_by') || urlParams.has('cuisine') || 
+        urlParams.has('meal_type') || urlParams.has('max_missing') || 
+        urlParams.has('show_all') || urlParams.has('page')) {
+        
+        // Hide loading overlay since the page has loaded with results
+        hideLoading();
+        
+        // Clear any interval that might be running
+        const intervalId = sessionStorage.getItem('messageIntervalId');
+        if (intervalId) {
+            clearInterval(parseInt(intervalId));
+            sessionStorage.removeItem('messageIntervalId');
+        }
+    }
 });
 </script>
 {% endblock %}
