@@ -1,7 +1,8 @@
 {% extends 'recipes/base.html' %}
+{% load recipe_filters %}
 {% block content %}
 
-<!-- 🔍 Search Section -->
+<!--  Search Section -->
 <form method="GET" action="{% url 'recipes-home' %}" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin: 20px 0;">
     <input type="text" name="q" placeholder="Search for a recipe..." value="{{ query }}" 
         style="width: 50%; max-width: 600px; padding: 12px 16px; border: 2px solid #ff6347; border-radius: 25px; font-size: 1em; outline: none; transition: 0.3s; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);">
@@ -12,104 +13,49 @@
     </button>
 </form>
 
-<!-- 📌 Filter Section -->
+<!--  Filter Section -->
 <div style="position: fixed; top: 120px; left: 20px; width: 200px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); padding: 15px; z-index: 999; text-align: center;">
     <h3 style="font-size: 1em; color: #ff6347; margin-bottom: 10px; font-weight: bold;">Filter Recipes</h3>
     
     <form method="GET">
-        <label for="like" style="font-size: 0.9em; display: block; margin: 5px 0; color: #555;">Like</label>
-        <select id="like" name="like" style="width: 100%; padding: 12px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1em; outline: none;">
+        <!-- Preserve any existing query -->
+        {% if query %}
+        <input type="hidden" name="q" value="{{ query }}">
+        {% endif %}
+        
+        <label for="like" style="font-size: 0.9em; display: block; margin: 5px 0; color: #555;">Category</label>
+        <select id="like" name="category" style="width: 100%; padding: 12px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1em; outline: none;">
             {% for value, label in filter_options %}
-                <option value="{{ value }}" {% if value == selected_like %}selected{% endif %}>{{ label }}</option>
+                <option value="{{ value }}" {% if value == selected_category %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
 
-        <label for="dislike" style="font-size: 0.9em; display: block; margin: 5px 0; color: #555;">Dislike</label>
-        <select id="dislike" name="dislike" style="width: 100%; padding: 12px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1em; outline: none;">
-            <option value="all">No Restrictions</option>
-            {% for value, label in filter_options %}
-                {% if value != 'all' %}
-                    <option value="{{ value }}" {% if value == selected_dislike %}selected{% endif %}>{{ label }}</option>
-                {% endif %}
-            {% endfor %}
-        </select>
+        
 
-        <button type="submit" style="width: 100%; padding: 12px 24px; background-color: #ff6347; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background-color 0.2s;">Apply Filters</button>
+        <button type="submit" style="width: 100%; padding: 12px 24px; background-color: #ff6347; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; margin-top: 15px;">Apply Filters</button>
     </form>
 </div>
 
-<!-- 🍽️ Recipes Container -->
-<!-- 🍽️ Recipes Container -->
+<!--  Recipes Container -->
 <div style="margin-left: 270px; margin-right: 50px; margin-top: 80px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
     {% if recipes %}
         {% for recipe in recipes %}
-            <div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;">
-                <div style="padding: 15px;">
-                    <div style="font-size: 1.2em; font-weight: bold; color: #ff6347; margin-bottom: 10px;">{{ recipe.get_clean_name }}</div>
-                    <div style="color: #555; margin-bottom: 10px; line-height: 1.4;">
-                        <div><strong>Prep Time:</strong> {{ recipe.get_prep_time_display }}</div>
-                        <div><strong>Cook Time:</strong> {{ recipe.get_cook_time_display }}</div>
-                        <div><strong>Servings:</strong> {{ recipe.servings }}</div>
-                        {% if not recipe.is_user_recipe %}
-                            <div><strong>Calories:</strong> {{ recipe.calories|floatformat:1 }}</div>
-                        {% endif %}
-                    </div>
-                    <div style="font-size: 0.8em; color: #888; margin-bottom: 10px;">
-                        {% if recipe.is_user_recipe %}
-                            Created by: {{ recipe.author.username }}
-                        {% else %}
-                            Category: {{ recipe.category }}
-                        {% endif %}
-                    </div>
-                    {% if recipe.is_user_recipe %}
-                        <a href="{% url 'recipes-detail' recipe.pk %}" 
-                           style="color: #ff6347; font-weight: bold; text-decoration: none;">
-                            View Recipe →
-                        </a>
-                    {% else %}
-                        <a href="{% url 'dataset-recipe-detail' recipe.pk %}" 
-                           style="color: #ff6347; font-weight: bold; text-decoration: none;">
-                            View Recipe →
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
+            {% include 'recipes/recipe_card.html' with recipe=recipe %}
         {% endfor %}
     {% else %}
-        <div style="text-align: center; margin-top: 50px;">
-            <h3 style="color: #ff6347;">No recipes found</h3>
-            <p style="color: #666;">Try adjusting your search or filters</p>
-        </div>
+        <p>No recipes found.</p>
     {% endif %}
-</div>
-
-<!-- Ingredients Section -->
-<div style="margin-bottom: 30px;">
-    <h2 style="color: #ff6347; margin-bottom: 15px; font-size: 1.5em;">Ingredients</h2>
-    {% with ingredients=recipe.get_ingredients %}
-        {% if ingredients %}
-            <ul style="list-style-type: none; padding: 0;">
-                {% for ingredient in ingredients %}
-                    <li style="padding: 10px; margin-bottom: 5px; background-color: #f8f9fa; border-radius: 5px;">
-                        • {{ ingredient }}
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p style="color: #666; font-style: italic;">Ingredient list not available</p>
-        {% endif %}
-    {% endwith %}
 </div>
 
 <!-- Pagination Section -->
 {% if recipes.has_other_pages %}
 <div style="display: flex; justify-content: center; align-items: center; margin: 30px 0; margin-left: 270px;">
     {% if recipes.has_previous %}
-        <a href="?page=1{% if query %}&q={{ query }}{% endif %}" 
+        <a href="?page=1{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}" 
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             First
         </a>
-        <a href="?page={{ recipes.previous_page_number }}{% if query %}&q={{ query }}{% endif %}"
+        <a href="?page={{ recipes.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Previous
         </a>
@@ -120,11 +66,11 @@
     </span>
 
     {% if recipes.has_next %}
-        <a href="?page={{ recipes.next_page_number }}{% if query %}&q={{ query }}{% endif %}"
+        <a href="?page={{ recipes.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Next
         </a>
-        <a href="?page={{ recipes.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}"
+        <a href="?page={{ recipes.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Last
         </a>
