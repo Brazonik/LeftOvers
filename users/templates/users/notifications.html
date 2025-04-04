@@ -1,0 +1,75 @@
+{% extends 'recipes/base.html' %}
+{% block content %}
+
+<div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 40px 20px;">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h1 style="color: #ff6347; margin: 0;">Notifications</h1>
+            
+            {% if unread_notifications %}
+                <form method="post" action="{% url 'notifications' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="mark_all" value="1">
+                    <button type="submit" style="background-color: #ff6347; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                        Mark All as Read
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+        
+        <!-- Unread notifications -->
+        {% if unread_notifications %}
+            <h2 style="color: #ff6347; margin-bottom: 15px; font-size: 1.3em;">New Notifications</h2>
+            <div style="background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); overflow: hidden; margin-bottom: 30px;">
+                {% for notification in unread_notifications %}
+                    <div style="padding: 20px; border-bottom: 1px solid #eee; {% if notification.notification_type == 'level_up' %}background-color: #fff8e1;{% elif notification.notification_type == 'achievement' %}background-color: #e8f5e9;{% endif %}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 8px;">{{ notification.title }}</div>
+                                <div style="margin-bottom: 10px;">{{ notification.message|safe }}</div>
+                                <div style="font-size: 0.8em; color: #777;">{{ notification.created_at|date:"F d, Y, g:i a" }}</div>
+                            </div>
+                            <form method="post" style="margin-left: 15px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="notification_id" value="{{ notification.id }}">
+                                <button type="submit" style="background: none; border: none; color: #888; cursor: pointer; padding: 5px 10px;">
+                                    Mark as Read
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- Read notifications -->
+        {% if read_notifications %}
+            <h2 style="color: #ff6347; margin-bottom: 15px; font-size: 1.3em;">Previous Notifications</h2>
+            <div style="background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                {% for notification in read_notifications %}
+                    <div style="padding: 20px; border-bottom: 1px solid #eee; opacity: 0.7;">
+                        <div style="font-weight: bold; margin-bottom: 8px;">{{ notification.title }}</div>
+                        <div style="margin-bottom: 10px;">{{ notification.message|safe }}</div>
+                        <div style="font-size: 0.8em; color: #777;">{{ notification.created_at|date:"F d, Y, g:i a" }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% if not unread_notifications and not read_notifications %}
+            <div style="background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); padding: 40px; text-align: center;">
+                <p style="color: #666; font-size: 1.1em;">You don't have any notifications yet.</p>
+                <p style="color: #888; margin-top: 10px;">Try more recipes to earn achievements and level up!</p>
+            </div>
+        {% endif %}
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="{% url 'profile' %}" style="display: inline-block; padding: 10px 20px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Back to Profile
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
