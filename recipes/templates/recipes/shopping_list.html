@@ -1,8 +1,9 @@
 {% extends "recipes/base.html" %}
+{% load recipe_filters %}
 
 {% block content %}
 <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-    <!-- Add Item Form -->
+    <!-- Add item to shopping list form, ingredient name, quantity, expiration date -->
     <div style="background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;">
         <h3 style="margin-bottom: 15px; color: #333;">Add New Item</h3>
         <form id="addItemForm">
@@ -26,7 +27,7 @@
         </form>
     </div>
 
-    <!-- Shopping List Container -->
+    <!-- Shopping list container, displays the ingredients. -->
     <div id="shopping-list-container">
         {% if items %}
             {% for item in items %}
@@ -55,7 +56,6 @@
 </div>
 
 <script>
-// Function to add new item to DOM
 function addItemToList(item) {
     const container = document.getElementById('shopping-list-container');
     const emptyMessage = document.getElementById('empty-message');
@@ -83,8 +83,13 @@ function addItemToList(item) {
     
     container.insertBefore(itemElement, container.firstChild);
 }
+// Add item to shopping list form submission 
+// Fetch request to add item to shopping list
+// If successful, add item to the list
+// If failed, show an alert with the error message
+// Reset the form fields
+// If there are no items in the list, show an empty message
 
-// Add item form submission
 document.getElementById("addItemForm").onsubmit = async function(event) {
     event.preventDefault();
 
@@ -113,10 +118,8 @@ document.getElementById("addItemForm").onsubmit = async function(event) {
         const data = await response.json();
         
         if (data.success) {
-            // Add new item to DOM
             addItemToList(data);
             
-            // Clear form
             document.getElementById("ingredientName").value = '';
             document.getElementById("quantity").value = '';
             document.getElementById("expirationDate").value = '';
@@ -128,8 +131,12 @@ document.getElementById("addItemForm").onsubmit = async function(event) {
         alert("Failed to add item. Please check the console for details.");
     }
 };
+// Collects values from the form fields
+// Send the values to the server using fetch().
+// If the response is successful, add the item to the list
+// If the response is not successful, show an alert with the error message
 
-// Remove item function
+
 async function removeItem(itemId) {
     try {
         const response = await fetch(`/remove-item/${itemId}/`, {
@@ -143,12 +150,10 @@ async function removeItem(itemId) {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // Remove the item from DOM
             const itemElement = document.getElementById(`item-${itemId}`);
             if (itemElement) {
                 itemElement.remove();
                 
-                // Check if list is empty
                 const container = document.getElementById('shopping-list-container');
                 const remainingItems = container.querySelectorAll('[id^="item-"]');
                 if (remainingItems.length === 0) {
@@ -159,10 +164,8 @@ async function removeItem(itemId) {
                 }
             }
         } else {
-            // Handle 404 and other errors
             if (response.status === 404) {
                 alert('This item has already been removed');
-                // Refresh the page to sync with server state
                 window.location.reload();
             } else {
                 throw new Error(data.error || 'Failed to remove item');
@@ -173,5 +176,10 @@ async function removeItem(itemId) {
         alert('Failed to remove item: ' + error.message);
     }
 }
+
+// Send a POST request to the server to remove the item
+// If successful, remove the item from the list
+// If the list is empty, show an empty message
+// If the item has already been removed, show an alert and reload the page
 </script>
 {% endblock %}
