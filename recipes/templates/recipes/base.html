@@ -1,3 +1,5 @@
+<!-- This provides the overall structure and layout for all of the pages in the app -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,12 +11,13 @@
         <title>Recipes App</title>
     {% endif %}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
-    
+    {% load user_filters %}
 </head>
 <body style="background-color: #fff3e0;">
+  <!-- navigation Bar, displayes different links based on whether the user is is_authenticated -->
     <nav class="navbar navbar-expand-lg" style="background-color: #ff6347;">
         <div class="container-fluid">
-          <a class="navbar-brand text-white" href="{% url 'recipes-home' %}">Recipes App</a>
+          <a class="navbar-brand text-white" href="{% url 'recipes-home' %}">LeftOvers</a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
@@ -30,13 +33,38 @@
                 <a class="nav-link text-white" href="{% url 'recipes-create' %}">Add Recipe</a>
               </li>
               <li class="nav-item">
+                <a class="nav-link text-white" href="{% url 'ingredient_tracking' %}">Ingredient Tracking</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link text-white" href="{% url 'shopping_list' %}">Shopping List</a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'recipe-shop' %}">Recipe Shop</a>
+              </li>
+              {% if user.is_authenticated %}
+              <li class="nav-item">
+                <a class="nav-link text-white" href="{% url 'unlocked-recipes' %}">
+                  <i class="fas fa-gift"></i> My Unlocked Recipes
+                  {% if user|has_new_unlocked_recipes %}
+                  <span class="badge bg-success rounded-pill ms-1">New!</span>
+                  {% endif %}
+                </a>
+              </li>
+              {% endif %}
             </ul>
           </div>
           <div class="navbar-nav">
             {% if user.is_authenticated %}
-              <a class="nav-item nav-link text-white" href="{% url 'user-profile' %}">My Profile</a>
+              <!-- Notifications -->
+              <a class="nav-item nav-link text-white position-relative" href="{% url 'notifications' %}">
+                Notifications
+                {% if unread_notification_count > 0 %}
+                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {{ unread_notification_count }}
+                  </span>
+                {% endif %}
+              </a>
+              <a class="nav-item nav-link text-white" href="{% url 'profile' %}">My Profile</a>
               <a class="nav-item nav-link text-white" href="{% url 'user-logout' %}">Logout</a>
             {% else %}
               <a class="nav-item nav-link text-white" href="{% url 'user-login' %}">Login</a>
@@ -45,18 +73,22 @@
           </div>
         </div>
     </nav>
+    <!-- Container for the main content of the page -->
     <div class="full-width-content">
         {% if messages %}
+        <div class="messages">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                </div>
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message|safe }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             {% endfor %}
+        </div>
         {% endif %}
         {% block content %}{% endblock content %}
     </div>
 
-    <!-- Footer Section -->
+    <!-- Footer section -->
     <footer class="text-center text-white" style="background-color:rgb(67, 60, 59); padding: 20px; margin-top: 30px;">
       <div class="container">
           <p>&copy; 2025 Recipes App | All Rights Reserved</p>
@@ -69,6 +101,34 @@
   </footer>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz9ATKxIep9tiCxS/Z9fNfEXiDAYTujMAeBAsjFuCZSmKbSSUnQlmh/jp3" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js" integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V" crossorigin="anonymous"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Lazy loading for images
+  const lazyImages = document.querySelectorAll('.lazy-image');
+  
+  if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver(function(entries, observer) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          img.src = img.dataset.src;
+          img.classList.remove('lazy-image');
+          imageObserver.unobserve(img);
+        }
+      });
+    });
+
+    lazyImages.forEach(function(image) {
+      imageObserver.observe(image);
+    });
+  } else {
+    lazyImages.forEach(function(img) {
+      img.src = img.dataset.src;
+      img.classList.remove('lazy-image');
+    });
+  }
+});
+</script>
 </body>
 
 </html>
