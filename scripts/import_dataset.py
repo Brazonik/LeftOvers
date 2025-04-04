@@ -4,7 +4,7 @@ import django
 import pandas as pd
 from django.db import transaction
 
-# Set up Django
+# Set up Django, this file uses the cleaned database to populate the database
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -15,22 +15,22 @@ from recipes.models import DatasetRecipe, DatasetIngredient
 
 def import_dataset_recipes():
     try:
-        print("📌 Starting dataset import...")
+        print(" Starting dataset import...")
         
         # Load the dataset
         df = pd.read_csv("data/recipes_cleaned.csv")  # Use full dataset
 
         recipes_imported = 0
-        batch_size = 5000  # Optimize insertion
+        batch_size = 5000  
 
         recipes_to_create = []
         ingredients_to_create = []
 
-        # Use a transaction for batch insertion (FASTER)
+        # Use a transaction for batch insertion
         with transaction.atomic():
             for _, row in df.iterrows():
                 try:
-                    # Create dataset recipe (Don't save yet, use bulk_create)
+                    # Create dataset recipe 
                     recipe = DatasetRecipe(
                         name=row["Name"],
                         cook_time=row.get("CookTime", ""),
@@ -45,7 +45,7 @@ def import_dataset_recipes():
                     )
                     recipes_to_create.append(recipe)
 
-                    # Handle ingredients properly (Ensure it's a valid string)
+                    # Handle ingredients properly 
                     ingredients = row.get("RecipeIngredientParts", "")
                     if isinstance(ingredients, str):
                         ingredients = ingredients.split(",")  # Convert to list
@@ -53,7 +53,7 @@ def import_dataset_recipes():
                     for ingredient in ingredients:
                         if ingredient.strip():  # Skip empty ingredients
                             ingredients_to_create.append(DatasetIngredient(
-                                recipe=recipe,  # This will be set later
+                                recipe=recipe,  
                                 name=ingredient.strip().lower()
                             ))
 
@@ -64,10 +64,10 @@ def import_dataset_recipes():
                         DatasetIngredient.objects.bulk_create(ingredients_to_create)
                         recipes_to_create = []
                         ingredients_to_create = []
-                        print(f"✅ Imported {recipes_imported} recipes...")
+                        print(f" Imported {recipes_imported} recipes...")
 
                 except Exception as e:
-                    print(f"❌ Error importing recipe {row['Name']}: {e}")
+                    print(f" Error importing recipe {row['Name']}: {e}")
                     continue
 
             # Final batch insert for remaining items
@@ -76,11 +76,10 @@ def import_dataset_recipes():
             if ingredients_to_create:
                 DatasetIngredient.objects.bulk_create(ingredients_to_create)
 
-        print(f"\n🎉 Successfully imported {recipes_imported} recipes!")
+        print(f"\n Successfully imported {recipes_imported} recipes!")
 
     except Exception as e:
-        print(f"🚨 Error during import: {e}")
+        print(f" Error during import: {e}")
 
-# Run the script
 if __name__ == "__main__":
     import_dataset_recipes()
