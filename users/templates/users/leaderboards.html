@@ -1,0 +1,147 @@
+{% extends 'recipes/base.html' %}
+{% load recipe_filters %}
+
+{% block content %}
+<div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 20px 0;">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+        <h1 style="color: #ff6347; margin-bottom: 30px; text-align: center;">Recipe Leaderboards</h1>
+        
+        <!-- User's Rank Section -->
+        {% if user.is_authenticated and user_rank %}
+<div style="background-color: white; border-radius: 10px; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); text-align: center;">
+    <h2 style="color: #ff6347; margin-bottom: 10px;">Your Current Rank</h2>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+        <div style="background-color: #ff6347; color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2em; font-weight: bold;">
+            {{ user_rank }}
+        </div>
+        <div>
+            {% if leaderboard_type == 'points' %}
+            <p style="font-size: 1.2em; margin-bottom: 5px;">Total Points: <strong>{{ user_points }}</strong></p>
+            {% elif leaderboard_type == 'achievements' %}
+            <p style="font-size: 1.2em; margin-bottom: 5px;">Achievements Unlocked: <strong>{{ user_achievement_count }}</strong></p>
+            {% elif leaderboard_type == 'recipes_tried' %}
+            <p style="font-size: 1.2em; margin-bottom: 5px;">Recipes Tried: <strong>{{ user_recipes_count }}</strong></p>
+            {% endif %}
+            <p style="color: #666;">Keep cooking to climb the ranks!</p>
+        </div>
+    </div>
+</div>
+        {% endif %}
+        
+        
+        
+        <!-- Leaderboard Type Selector -->
+        <div style="background-color: white; border-radius: 10px; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
+                <a href="?type=points" style="{% if leaderboard_type == 'points' %}background-color: #ff6347; color: white;{% else %}background-color: #f0f0f0; color: #555;{% endif %} padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; flex: 1; text-align: center;">
+                    Points Leaderboard
+                </a>
+                <a href="?type=achievements" style="{% if leaderboard_type == 'achievements' %}background-color: #ff6347; color: white;{% else %}background-color: #f0f0f0; color: #555;{% endif %} padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; flex: 1; text-align: center;">
+                    Achievements Leaderboard
+                </a>
+                <a href="?type=recipes_tried" style="{% if leaderboard_type == 'recipes_tried' %}background-color: #ff6347; color: white;{% else %}background-color: #f0f0f0; color: #555;{% endif %} padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; flex: 1; text-align: center;">
+                    Recipes Tried Leaderboard
+                </a>
+            </div>
+            
+            
+        
+        <!-- Leaderboard Table -->
+        <div style="background-color: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+            <h2 style="color: #ff6347; margin-bottom: 20px; text-align: center;">
+                {% if leaderboard_type == 'points' %}
+                    Top Chefs by Points
+                {% elif leaderboard_type == 'achievements' %}
+                    Top Chefs by Achievements
+                {% elif leaderboard_type == 'recipes_tried' %}
+                    Top Chefs by Recipes Tried
+                {% endif %}
+            </h2>
+            
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f9f9f9; border-bottom: 2px solid #ff6347;">
+                            <th style="padding: 15px; text-align: center; color: #ff6347;">Rank</th>
+                            <th style="padding: 15px; text-align: left; color: #ff6347;">User</th>
+                            <th style="padding: 15px; text-align: center; color: #ff6347;">Level</th>
+                            <th style="padding: 15px; text-align: center; color: #ff6347;">
+                                {% if leaderboard_type == 'points' %}
+                                    Total Points
+                                {% elif leaderboard_type == 'achievements' %}
+                                    Achievements
+                                {% elif leaderboard_type == 'recipes_tried' %}
+                                    Recipes Tried
+                                {% endif %}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in leaderboard_entries %}
+                            <tr style="{% if user.username == entry.user.username or user.username == entry.user__username %}background-color: #fff3e0;{% else %}{% if forloop.counter|divisibleby:2 %}background-color: #f9f9f9;{% endif %}{% endif %} border-bottom: 1px solid #eee;">
+                                <td style="padding: 15px; text-align: center; font-weight: bold; color: #333;">
+                                    {% if forloop.counter <= 3 %}
+                                        <div style="width: 30px; height: 30px; border-radius: 50%; background-color: {% if forloop.counter == 1 %}#FFD700{% elif forloop.counter == 2 %}#C0C0C0{% else %}#CD7F32{% endif %}; color: white; display: flex; justify-content: center; align-items: center; margin: 0 auto;">
+                                            {{ forloop.counter }}
+                                        </div>
+                                    {% else %}
+                                        {{ forloop.counter }}
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 15px; font-weight: {% if user.username == entry.user.username or user.username == entry.user__username %}bold{% else %}normal{% endif %};">
+                                    {% if entry.user %}
+                                        {{ entry.user.username }}
+                                    {% else %}
+                                        {{ entry.user__username }}
+                                    {% endif %}
+                                    
+                                    {% if user.username == entry.user.username or user.username == entry.user__username %}
+                                        <span style="color: #ff6347; font-style: italic; margin-left: 5px;">(You)</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 15px; text-align: center;">
+                                    <div style="font-weight: bold; color: #ff6347;">
+                                        {% if entry.current_level %}
+                                            Level {{ entry.current_level }}
+                                        {% elif entry.level %}
+                                            Level {{ entry.level }}
+                                        {% endif %}
+                                    </div>
+                                    <div style="font-size: 0.8em; color: #666;">
+                                        {% if entry.current_level %}
+                                            {{ entry.get_level_title }}
+                                        {% elif entry.level_title %}
+                                            {{ entry.level_title }}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td style="padding: 15px; text-align: center; font-weight: bold; color: #333;">
+                                    {% if leaderboard_type == 'points' %}
+                                        {{ entry.total_points }}
+                                    {% elif leaderboard_type == 'achievements' %}
+                                        {{ entry.achievement_count }}
+                                    {% elif leaderboard_type == 'recipes_tried' %}
+                                        {{ entry.recipes_count }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" style="padding: 30px; text-align: center; color: #666;">
+                                    No data available for this leaderboard yet.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="{% url 'profile' %}" style="display: inline-block; padding: 10px 20px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Back to My Profile
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock content %}
