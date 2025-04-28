@@ -2,94 +2,174 @@
 {% load recipe_filters %}
 
 {% block content %}
-<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-    <!-- Add item to shopping list form, ingredient name, quantity, expiration date -->
-    <div style="background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;">
-        <h3 style="margin-bottom: 15px; color: #333;">Add New Item</h3>
-        <form id="addItemForm">
-            {% csrf_token %}
-            <div style="margin-bottom: 15px;">
-                <input type="text" id="ingredientName" placeholder="Ingredient Name" required
-                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <input type="text" id="quantity" placeholder="Quantity (e.g., 2 carrots)" required
-                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <input type="date" id="expirationDate"
-                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-            </div>
-            <button type="submit" 
-                style="background-color: #ff6347; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-                Add Item
-            </button>
-        </form>
+<div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+    <!-- Header Section with Counter -->
+    <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+        <h1 style="color: #ff6347; margin: 0;">Shopping List</h1>
+        <div style="background-color: #ff6347; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold;">
+            {{ items|length }} item{{ items|length|pluralize }}
+        </div>
     </div>
 
-    <!-- Shopping list container, displays the ingredients. -->
-    <div id="shopping-list-container">
-        {% if items %}
-            {% for item in items %}
-            <div id="item-{{ item.id }}" style="background-color: white; margin-bottom: 15px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <h3 style="color: #ff6347; margin: 0; font-size: 1.3em;">{{ item.ingredient_name }}</h3>
-                        <p style="color: #666; margin: 5px 0;">{{ item.quantity }}</p>
-                        {% if item.expiration_date %}
-                        <p style="color: #888; font-size: 0.9em; margin-top: 10px;">Exp: {{ item.expiration_date }}</p>
-                        {% endif %}
+    <!-- Main Content Grid -->
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 20px;">
+        <!-- Left Column - Add Item Form -->
+        <div>
+            <!-- Add item to shopping list form -->
+            <div style="background-color: white; padding: 25px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); position: sticky; top: 20px;">
+                <h3 style="margin-bottom: 20px; color: #333; border-bottom: 2px solid #ff6347; padding-bottom: 10px;">Add New Item</h3>
+                <form id="addItemForm">
+                    {% csrf_token %}
+                    <div style="margin-bottom: 15px;">
+                        <label for="ingredientName" style="display: block; margin-bottom: 5px; font-weight: bold; color: #555;">Ingredient Name *</label>
+                        <input type="text" id="ingredientName" placeholder="e.g., Tomatoes" required
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
                     </div>
-                    <button onclick="removeItem({{ item.id }})" 
-                        style="background-color: #fff; color: #ff6347; border: 1px solid #ff6347; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
-                        Remove
+                    <div style="margin-bottom: 15px;">
+                        <label for="quantity" style="display: block; margin-bottom: 5px; font-weight: bold; color: #555;">Quantity *</label>
+                        <input type="text" id="quantity" placeholder="e.g., 500g, 2 pieces" required
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label for="expirationDate" style="display: block; margin-bottom: 5px; font-weight: bold; color: #555;">Expiration Date</label>
+                        <input type="date" id="expirationDate"
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <small style="color: #888; display: block; margin-top: 5px;">Optional: Track when items expire</small>
+                    </div>
+                    <button type="submit" 
+                        style="background-color: #ff6347; color: white; border: none; padding: 12px; width: 100%; border-radius: 5px; cursor: pointer; font-weight: bold; transition: background-color 0.3s ease;">
+                        Add to Shopping List
                     </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column - Shopping List -->
+        <div>
+            <!-- Filter and Sort Controls -->
+            <div style="background-color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <label for="filterItems" style="margin-right: 10px; font-weight: bold; color: #555;">Filter:</label>
+                    <input type="text" id="filterItems" placeholder="Search items..." 
+                           style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 200px;">
+                </div>
+                <div>
+                    <label for="sortItems" style="margin-right: 10px; font-weight: bold; color: #555;">Sort by:</label>
+                    <select id="sortItems" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="name">Name A-Z</option>
+                        <option value="expiry">Expiration Date</option>
+                    </select>
                 </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <div id="empty-message" style="text-align: center; color: #666; padding: 20px;">
-                Your shopping list is empty.
+
+            <!-- Shopping list container with items -->
+            <div id="shopping-list-container">
+                {% if items %}
+                    <!-- Expiring soon section -->
+                    {% with expiring_items=items|expiring_soon %}
+                    {% if expiring_items %}
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #e74c3c; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #e74c3c;">
+                            <i class="fas fa-exclamation-circle"></i> Expiring Soon
+                        </h3>
+                        {% for item in expiring_items %}
+                        <div id="item-{{ item.id }}" class="shopping-list-item" 
+                             style="background-color: #ffeceb; margin-bottom: 15px; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 4px solid #e74c3c;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h3 style="color: #333; margin: 0; font-size: 1.1em;">{{ item.ingredient_name }}</h3>
+                                    <div style="display: flex; align-items: center; margin-top: 5px;">
+                                        <span style="color: #666; font-size: 0.9em;">{{ item.quantity }}</span>
+                                        {% if item.expiration_date %}
+                                            <span style="color: #e74c3c; font-size: 0.8em; margin-left: 10px; font-weight: bold;">
+                                                Expires: {{ item.expiration_date|date:"M d, Y" }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div>
+                                    <button onclick="removeItem({{ item.id }})" 
+                                        style="background-color: #ff6347; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                                        <i class="fas fa-times"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+
+                    <!-- Regular items -->
+                    <div>
+                        <h3 style="color: #333; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #ddd;">
+                            Shopping List
+                        </h3>
+                        {% for item in items %}
+                            {% if not item|is_expiring_soon %}
+                            <div id="item-{{ item.id }}" class="shopping-list-item"
+                                 style="background-color: white; margin-bottom: 15px; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h3 style="color: #333; margin: 0; font-size: 1.1em;">{{ item.ingredient_name }}</h3>
+                                        <div style="display: flex; align-items: center; margin-top: 5px;">
+                                            <span style="color: #666; font-size: 0.9em;">{{ item.quantity }}</span>
+                                            {% if item.expiration_date %}
+                                                <span style="color: #888; font-size: 0.8em; margin-left: 10px;">
+                                                    Expires: {{ item.expiration_date|date:"M d, Y" }}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <button onclick="removeItem({{ item.id }})" 
+                                            style="background-color: #ff6347; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                                            <i class="fas fa-times"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div id="empty-message" style="text-align: center; color: #666; padding: 40px; background-color: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <i class="fas fa-shopping-basket" style="font-size: 48px; color: #ddd; margin-bottom: 20px;"></i>
+                        <h3 style="margin-bottom: 10px;">Your shopping list is empty</h3>
+                        <p>Add ingredients to get started with your shopping list.</p>
+                    </div>
+                {% endif %}
             </div>
-        {% endif %}
+
+            <!-- Action buttons for the shopping list -->
+            {% if items %}
+            <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+                <button id="clear-shopping-list" class="btn btn-danger">
+                    Clear All Items
+                </button>
+                <button id="track-shopping-list" class="btn btn-primary">
+                    Move All to Ingredient Tracking
+                </button>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
 <script>
+//add item to list function
 function addItemToList(item) {
-    const container = document.getElementById('shopping-list-container');
-    const emptyMessage = document.getElementById('empty-message');
-    if (emptyMessage) {
-        emptyMessage.remove();
-    }
-
-    const itemElement = document.createElement('div');
-    itemElement.id = `item-${item.id}`;
-    itemElement.style = "background-color: white; margin-bottom: 15px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative;";
-    
-    itemElement.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h3 style="color: #ff6347; margin: 0; font-size: 1.3em;">${item.ingredient}</h3>
-                <p style="color: #666; margin: 5px 0;">${item.quantity}</p>
-                ${item.expiration_date ? `<p style="color: #888; font-size: 0.9em; margin-top: 10px;">Exp: ${item.expiration_date}</p>` : ''}
-            </div>
-            <button onclick="removeItem(${item.id})" 
-                style="background-color: #fff; color: #ff6347; border: 1px solid #ff6347; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
-                Remove
-            </button>
-        </div>
-    `;
-    
-    container.insertBefore(itemElement, container.firstChild);
+    window.location.reload();
 }
-// Add item to shopping list form submission 
-// Fetch request to add item to shopping list
-// If successful, add item to the list
-// If failed, show an alert with the error message
-// Reset the form fields
-// If there are no items in the list, show an empty message
 
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+//single item add form submission
 document.getElementById("addItemForm").onsubmit = async function(event) {
     event.preventDefault();
 
@@ -118,68 +198,131 @@ document.getElementById("addItemForm").onsubmit = async function(event) {
         const data = await response.json();
         
         if (data.success) {
-            addItemToList(data);
-            
-            document.getElementById("ingredientName").value = '';
-            document.getElementById("quantity").value = '';
-            document.getElementById("expirationDate").value = '';
+            alert('Item added successfully!');
+            window.location.reload();
         } else {
             alert(data.error || "Failed to add item");
         }
     } catch (error) {
         console.error("Error:", error);
-        alert("Failed to add item. Please check the console for details.");
+        alert("Failed to add item. Please try again.");
     }
 };
-// Collects values from the form fields
-// Send the values to the server using fetch().
-// If the response is successful, add the item to the list
-// If the response is not successful, show an alert with the error message
 
+//filter items function
+document.getElementById("filterItems").addEventListener('input', function() {
+    const filterText = this.value.toLowerCase();
+    const items = document.querySelectorAll('.shopping-list-item');
+    
+    items.forEach(item => {
+        const itemName = item.querySelector('h3').textContent.toLowerCase();
+        if (itemName.includes(filterText)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
 
+//sort items function
+document.getElementById("sortItems").addEventListener('change', function() {
+    alert('Sorting will reload the page');
+    window.location.reload();
+});
+
+//remove item function
 async function removeItem(itemId) {
-    try {
-        const response = await fetch(`/remove-item/${itemId}/`, {
+    if (confirm('Are you sure you want to remove this item?')) {
+        try {
+            const response = await fetch(`/remove-item/${itemId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                alert('Item removed successfully');
+                window.location.reload();
+            } else {
+                alert(data.error || 'Failed to remove item');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to remove item: ' + error.message);
+        }
+    }
+}
+
+//mobile responsive adjustments
+function adjustForMobile() {
+    if (window.innerWidth < 768) {
+        document.querySelector('div[style*="grid-template-columns"]').style.gridTemplateColumns = '1fr';
+    } else {
+        document.querySelector('div[style*="grid-template-columns"]').style.gridTemplateColumns = 'minmax(0, 1fr) minmax(0, 2fr)';
+    }
+}
+
+window.addEventListener('load', adjustForMobile);
+window.addEventListener('resize', adjustForMobile);
+
+//clear Shopping List functionality
+document.getElementById('clear-shopping-list').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    if (confirm('Are you sure you want to clear your entire shopping list?')) {
+        fetch('/clear-shopping-list/', {
             method: 'POST',
             headers: {
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                 'Content-Type': 'application/json'
             }
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            const itemElement = document.getElementById(`item-${itemId}`);
-            if (itemElement) {
-                itemElement.remove();
-                
-                const container = document.getElementById('shopping-list-container');
-                const remainingItems = container.querySelectorAll('[id^="item-"]');
-                if (remainingItems.length === 0) {
-                    container.innerHTML = `
-                        <div id="empty-message" style="text-align: center; color: #666; padding: 20px;">
-                            Your shopping list is empty.
-                        </div>`;
-                }
-            }
-        } else {
-            if (response.status === 404) {
-                alert('This item has already been removed');
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
                 window.location.reload();
             } else {
-                throw new Error(data.error || 'Failed to remove item');
+                alert(data.error || 'Failed to clear shopping list');
             }
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to remove item: ' + error.message);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while clearing your shopping list. Please try again.');
+        });
     }
-}
+});
 
-// Send a POST request to the server to remove the item
-// If successful, remove the item from the list
-// If the list is empty, show an empty message
-// If the item has already been removed, show an alert and reload the page
+//track Shopping List Items functionality
+document.getElementById('track-shopping-list').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    if (confirm('Move all shopping list items to your ingredient tracking?')) {
+        fetch('/track-shopping-list-items/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.href = '/ingredient-tracking/';
+            } else {
+                alert(data.error || 'Failed to move items to tracking');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while moving your items. Please try again.');
+        });
+    }
+});
 </script>
 {% endblock %}

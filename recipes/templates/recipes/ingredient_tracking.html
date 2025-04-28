@@ -1,3 +1,4 @@
+
 {% extends "recipes/base.html" %}
 {% block content %}
 {% load recipe_filters %}
@@ -32,21 +33,35 @@
         </div>
     </div>
 
-    <!-- Loading Overlay - Single Implementation -->
-    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 9999; text-align: center; padding-top: 20%;">
-        <div class="card" style="max-width: 500px; margin: 0 auto;">
+    <!-- Single Loading Overlay  -->
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 9999; text-align: center; padding-top: 5%;">
+        <div class="card" style="max-width: 700px; margin: 0 auto; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
             <div class="card-header bg-danger text-white">
-                <h5 class="mb-0">Processing Your Request</h5>
+                <h5 class="mb-0">Processing Your Recipe Request</h5>
             </div>
-            <div class="card-body">
-                <div class="spinner-border text-danger mb-3" role="status">
-                    <span class="visually-hidden">Loading...</span>
+            <div class="card-body d-flex flex-column" style="overflow: hidden;">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border text-danger me-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p id="loading-message" class="mb-0 flex-grow-1">Please wait while we find recipes for your ingredients...</p>
                 </div>
-                <p id="loading-message" class="mb-3">Please wait while we process your request...</p>
-                <div class="progress mb-3" style="height: 25px;">
-                    <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                
+                <!-- Analysis Log Display -->
+                <div id="analysis-log-container" style="flex-grow: 1; overflow-y: auto; margin: 10px 0; height: 300px;">
+                    <div id="analysis-logs" class="text-start p-2" style="background-color: #f8f9fa; border-radius: 5px; height: 100%; overflow-y: auto; font-family: monospace; font-size: 0.75rem;">
+                        <div class="log-line my-1">Starting recipe analysis...</div>
+                    </div>
                 </div>
-                <p class="text-muted small mb-0">This may take a moment as we analyze our recipe database.</p>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="statistics text-start small">
+                        <span id="recipes-processed">0</span> recipes processed | 
+                        <span id="recipes-matched">0</span> matches found | 
+                        <span id="perfect-matches">0</span> perfect matches
+                    </div>
+                    <button id="toggle-logs-btn" class="btn btn-sm btn-outline-secondary">Hide Details</button>
+                </div>
             </div>
         </div>
     </div>
@@ -138,9 +153,28 @@
                             {% endif %}
                         </span>
                     </div>
-                    
+
                     <div class="card-body">
                         <h5 class="card-title" style="color: #ff6347;">{{ match.name }}</h5>
+                        
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                            <!-- View Recipe Button -->
+                            {% if match.is_dataset %}
+                                <a href="{% url 'dataset-recipe-detail' match.recipe.pk %}" 
+                                   class="btn btn-danger btn-sm" style="flex-grow: 1;">View Recipe</a>
+                            {% else %}
+                                <a href="{% url 'recipes-detail' match.recipe.pk %}" 
+                                   class="btn btn-danger btn-sm" style="flex-grow: 1;">View Recipe</a>
+                            {% endif %}
+                            
+                            
+                            <!-- Difficulty Badge -->
+                            {% with difficulty=match.recipe|get_difficulty %}
+                            <span class="badge bg-{{ difficulty.class }}" style="font-size: 0.9em; padding: 5px 10px; border-radius: 4px;">
+                                {{ difficulty.level }}
+                            </span>
+                            {% endwith %}
+                        </div>
                         
                         <!-- Recipe Info Row -->
                         <div style="display: flex; flex-wrap: wrap; margin-bottom: 15px; font-size: 0.85em;">
@@ -187,19 +221,12 @@
                             {% endif %}
                         </div>
                         
-                        <!-- Action Buttons -->
-                        <div style="display: flex; gap: 10px;">
-                            {% if match.is_dataset %}
-                                <a href="{% url 'dataset-recipe-detail' match.recipe.pk %}" 
-                                   class="btn btn-danger btn-sm">View Recipe</a>
-                            {% else %}
-                                <a href="{% url 'recipes-detail' match.recipe.pk %}" 
-                                   class="btn btn-danger btn-sm">View Recipe</a>
-                            {% endif %}
-                            
+                        <!-- Add to Shopping List Button -->
+                        <div>
                             <button class="btn btn-outline-success btn-sm add-to-shopping-list"
                                     data-recipe-id="{{ match.recipe.pk }}"
-                                    data-is-dataset="{{ match.is_dataset|yesno:'true,false' }}">
+                                    data-is-dataset="{{ match.is_dataset|yesno:'true,false' }}"
+                                    style="width: 100%;">
                                 Add to Shopping List
                             </button>
                         </div>
@@ -215,7 +242,6 @@
         {% endfor %}
     </div>
     
-    <!-- No visible recipes message -->
     <div id="noVisibleRecipesMessage" class="alert alert-info" style="display: none;">
         No recipes with images found. <button type="button" id="showAllFromMessage" class="btn btn-link p-0 align-baseline">Show all recipes</button>
     </div>
@@ -262,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingOverlay = document.getElementById('loading-overlay');
     const loadingMessage = document.getElementById('loading-message');
     
-    // Loading message rotation
+    //loading message rotation
     const loadingMessages = [
         "Analyzing your ingredients...",
         "Searching through our recipe database...",
@@ -275,15 +301,26 @@ document.addEventListener('DOMContentLoaded', function() {
     let messageIndex = 0;
     let messageInterval = null;
     
-    // Show loading overlay with custom message
+    //show loading overlay with custom message
     function showLoading(message) {
         if (loadingMessage) loadingMessage.textContent = message || "Processing your request...";
         if (loadingOverlay) loadingOverlay.style.display = 'block';
         
-        // Clear any existing interval
+        //clear existing log entries 
+        const analysisLogs = document.getElementById('analysis-logs');
+        if (analysisLogs) {
+            analysisLogs.innerHTML = '<div class="log-line my-1">Starting recipe analysis...</div>';
+        }
+        
+        //reset counters
+        document.getElementById('recipes-processed').textContent = '0';
+        document.getElementById('recipes-matched').textContent = '0';
+        document.getElementById('perfect-matches').textContent = '0';
+        
+        addLogEntry(message || "Processing your request...", 'highlight');
+        
         if (messageInterval) clearInterval(messageInterval);
         
-        // Start rotating messages for long operations
         messageInterval = setInterval(function() {
             if (loadingMessage) {
                 loadingMessage.textContent = loadingMessages[messageIndex];
@@ -291,23 +328,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 3000);
         
-        // Store interval ID in session storage
         sessionStorage.setItem('messageIntervalId', messageInterval);
     }
     
-    // Hide loading overlay and clear message rotation
     function hideLoading() {
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         
-        // Clear message rotation interval
         if (messageInterval) clearInterval(messageInterval);
         messageInterval = null;
         
-        // Clear from session storage
         sessionStorage.removeItem('messageIntervalId');
     }
     
-    // Check if there are any visible recipe cards
+    function addLogEntry(text, type = 'info') {
+        const analysisLogs = document.getElementById('analysis-logs');
+        if (!analysisLogs) return;
+        
+        const line = document.createElement('div');
+        line.className = 'log-line my-1';
+        line.textContent = text;
+        
+        if (type === 'error') {
+            line.style.color = '#dc3545'; 
+        } else if (type === 'success') {
+            line.style.color = '#28a745'; 
+            line.style.fontWeight = 'bold';
+        } else if (type === 'progress') {
+            line.style.color = '#007bff'; 
+        } else if (type === 'highlight') {
+            line.style.color = '#6f42c1'; 
+            line.style.fontWeight = 'bold';
+        }
+        
+        analysisLogs.appendChild(line);
+        analysisLogs.scrollTop = analysisLogs.scrollHeight;
+    }
+    
     function checkForVisibleRecipes() {
         if (!{{ show_all|yesno:'true,false' }}) {
             const visibleRecipes = document.querySelectorAll('.recipe-card:not([style*="display: none"])');
@@ -324,47 +380,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Get CSRF token
     function getCSRFToken() {
         return document.querySelector('[name=csrfmiddlewaretoken]').value;
     }
 
-    //  INITIALIZE COMMON INGREDIENTS SUGGESTIONS 
+    // iNITIALIZES COMMON INGREDIENTS SUGGESTIONS 
     const commonIngredients = [
-        // Vegetables
         'Tomatoes', 'Onions', 'Garlic', 'Bell Peppers', 'Carrots', 'Potatoes', 
         'Lettuce', 'Spinach', 'Broccoli', 'Cauliflower', 'Zucchini', 'Cucumber',
         'Corn', 'Mushrooms', 'Green Beans', 'Asparagus', 'Celery', 'Cabbage',
         
-        // Fruits
         'Apples', 'Bananas', 'Oranges', 'Lemons', 'Limes', 'Strawberries', 
         'Blueberries', 'Raspberries', 'Pineapple', 'Grapes', 'Watermelon',
         'Avocado', 'Mango', 'Peaches',
         
-        // Proteins
         'Chicken Breast', 'Ground Beef', 'Steak', 'Pork Chops', 'Bacon', 'Ham',
         'Turkey', 'Sausage', 'Tofu', 'Eggs', 'Shrimp', 'Salmon', 'Tuna',
         
-        // Dairy
         'Milk', 'Butter', 'Yogurt', 'Cheddar Cheese', 'Parmesan Cheese',
-        'Mozzarella Cheese', 'Cream Cheese', 'Feta Cheese',
+        'Mozzarella Cheese', 'Cream Cheese',
         'Sour Cream',
         
-        // Grains and Pasta
         'Rice', 'Pasta', 'Spaghetti', 'Bread', 'Flour', 'Oats', 'Quinoa',
         'Tortillas', 'Noodles',
         
-        // Herbs and Spices
         'Salt', 'Pepper', 'Basil', 'Oregano', 'Thyme', 'Rosemary', 'Cinnamon',
         'Paprika', 'Cumin', 'Curry Powder', 'Chili Powder', 'Garlic Powder',
         
-        // Condiments and Sauces
         'Olive Oil', 'Vegetable Oil', 'Vinegar', 'Soy Sauce', 'Hot Sauce',
         'Mayonnaise', 'Ketchup', 'Mustard', 'Honey', 'Maple Syrup',
         'Peanut Butter', 'BBQ Sauce', 'Salsa'
     ];
     
-    // Populate ingredient suggestions
+    //populates ingredient suggestions
     const datalist = document.getElementById('ingredient-suggestions');
     if (datalist) {
         commonIngredients.forEach(ingredient => {
@@ -374,27 +422,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-   
-    
-    //FILTER TOGGLE BUTTON 
     const toggleButton = document.getElementById('toggleButton');
     const showAllInput = document.getElementById('showAllInput');
     const filterForm = document.getElementById('filterForm');
     const showAllFromMessage = document.getElementById('showAllFromMessage');
     
-    // Initial check if there are visible recipes
+    //initial check if there are visible recipes
     checkForVisibleRecipes();
     
     if (toggleButton && showAllInput && filterForm) {
         toggleButton.addEventListener('click', function() {
-            // Toggle the value
             const currentValue = showAllInput.value === 'true';
             showAllInput.value = !currentValue;
             
-            // Show loading before submitting
             showLoading("Updating recipe display preferences...");
             
-            // Submit the form to reload with the new filter
             filterForm.submit();
         });
     }
@@ -403,14 +445,13 @@ document.addEventListener('DOMContentLoaded', function() {
         showAllFromMessage.addEventListener('click', function() {
             showAllInput.value = 'true';
             
-            // Show loading before submitting
             showLoading("Loading all recipes...");
             
             filterForm.submit();
         });
     }
     
-    // ADD INGREDIENT FORM 
+    //add ingredient form submission
     const addIngredientForm = document.getElementById('add-ingredient-form');
     
     if (addIngredientForm) {
@@ -423,7 +464,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 expiration_date: document.getElementById('expirationDate').value
             };
             
-            // Show loading overlay
             showLoading("Adding ingredient to your tracked list...");
             
             fetch("{% url 'track_ingredient' %}", {
@@ -437,34 +477,30 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Update loading message
                     if (loadingMessage) {
                         loadingMessage.textContent = "Refreshing recipe matches with your new ingredient...";
                     }
                     location.reload();
                 } else {
-                    // Hide loading overlay if there's an error
                     hideLoading();
                     alert(data.error || 'Error adding ingredient');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                // Hide loading overlay if there's an error
                 hideLoading();
                 alert('Error adding ingredient: ' + error.message);
             });
         });
     }
     
-    // REMOVE INGREDIENT FUNCTIONALITY 
+    //remove ingredient button functionality
     const removeButtons = document.querySelectorAll('.remove-ingredient');
     
     removeButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // Get the ingredient ID from data-id attribute
             const ingredientId = this.getAttribute('data-id');
             
             if (!ingredientId) {
@@ -474,10 +510,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (confirm('Are you sure you want to remove this ingredient?')) {
-                // Show loading overlay
                 showLoading("Removing ingredient from your tracked list...");
                 
-                // Make the fetch request
                 fetch(`/remove-tracked-ingredient/${ingredientId}/`, {
                     method: 'POST',
                     headers: {
@@ -494,22 +528,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(data => {
                     if (data.success) {
-                        // Update loading message
                         if (loadingMessage) {
                             loadingMessage.textContent = "Updating recipe matches...";
                         }
-                        // Reload the page to show updated list
                         window.location.reload();
                     } else {
-                        // Hide loading overlay if there's an error
                         hideLoading();
-                        // Show error from server
                         alert(data.error || 'Error removing ingredient');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    // Hide loading overlay if there's an error
                     hideLoading();
                     alert('Error removing ingredient: ' + error.message);
                 });
@@ -517,7 +546,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ADD RECIPE TO SHOPPING LIST 
+    //add to shopping list button functionality 
     const shoppingListButtons = document.querySelectorAll('.add-to-shopping-list');
     
     shoppingListButtons.forEach(button => {
@@ -527,7 +556,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const recipeId = this.getAttribute('data-recipe-id');
             const isDataset = this.getAttribute('data-is-dataset') === 'true';
             
-            // Show loading overlay
             showLoading("Adding recipe ingredients to your shopping list...");
             
             try {
@@ -544,7 +572,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const data = await response.json();
                 
-                // Hide loading overlay
                 hideLoading();
                 
                 if (data.success) {
@@ -558,29 +585,254 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error("Error:", error);
-                // Hide loading overlay
                 hideLoading();
                 alert("Failed to add ingredients to shopping list. Please try again.");
             }
         });
     });
     
-    // If we're coming back from a form submission, make sure loading overlay is hidden
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('sort_by') || urlParams.has('cuisine') || 
         urlParams.has('meal_type') || urlParams.has('max_missing') || 
         urlParams.has('show_all') || urlParams.has('page')) {
         
-        // Hide loading overlay since the page has loaded with results
         hideLoading();
         
-        // Clear any interval that might be running
         const intervalId = sessionStorage.getItem('messageIntervalId');
         if (intervalId) {
             clearInterval(parseInt(intervalId));
             sessionStorage.removeItem('messageIntervalId');
         }
     }
+    
+    window.showLoading = showLoading;
+    window.hideLoading = hideLoading;
+});
+
+$(document).ready(function() {
+    
+    $("#ingredient-form, #filter-form").submit(function() {
+        showLoadingOverlay();
+        return true;
+    });
+
+    $(".filter-link").click(function() {
+        showLoadingOverlay();
+    });
+
+    function showLoadingOverlay() {
+        $("#loading-overlay").show();
+        pollProgress();
+    }
+
+    function pollProgress() {
+        var progressCheck = setInterval(function() {
+            $.ajax({
+                url: window.location.pathname + '?progress_check=1',
+                dataType: 'json',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(data) {
+                    $("#loading-message").text(data.status || "Processing...");
+                    
+                    if (data.total_processed) {
+                        $("#recipes-processed").text(data.total_processed);
+                    }
+                    if (data.matches_found) {
+                        $("#recipes-matched").text(data.matches_found);
+                    }
+                    if (data.perfect_matches) {
+                        $("#perfect-matches").text(data.perfect_matches);
+                    }
+                    
+                    if (data.log_entries && data.log_entries.length) {
+                        data.log_entries.forEach(entry => {
+                            addLogEntry(entry.message, entry.type || 'info');
+                        });
+                    }
+                    
+                    if (data.step === 'completed') {
+                        clearInterval(progressCheck);
+                        
+                        addLogEntry("Recipe analysis complete!", 'success');
+                        
+                        setTimeout(function() {
+                            $("#loading-overlay").hide();
+                        }, 1000);
+                    }
+                },
+                error: function() {
+                    // In case of error, just stop polling
+                    clearInterval(progressCheck);
+                    addLogEntry("Error communicating with server", 'error');
+                }
+            });
+        }, 500);
+    }
+});
+
+// Real-time debug console integration
+// Add this at the end of your existing script
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const analysisLogs = document.getElementById('analysis-logs');
+    const recipesProcessed = document.getElementById('recipes-processed');
+    const recipesMatched = document.getElementById('recipes-matched');
+    const perfectMatches = document.getElementById('perfect-matches');
+    
+    // Original console methods
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    
+    // Function to add a log line
+    function addLogLine(text, type = 'info') {
+        if (!analysisLogs) return;
+        
+        const line = document.createElement('div');
+        line.className = 'log-line my-1';
+        line.textContent = text;
+        
+        // Style based on log type
+        if (type === 'error') {
+            line.style.color = '#dc3545'; // red
+        } else if (type === 'success') {
+            line.style.color = '#28a745'; // green
+            line.style.fontWeight = 'bold';
+        } else if (type === 'progress') {
+            line.style.color = '#007bff'; // blue
+        } else if (type === 'highlight') {
+            line.style.color = '#6f42c1'; // purple
+            line.style.fontWeight = 'bold';
+        }
+        
+        analysisLogs.appendChild(line);
+        
+        // Auto-scroll to bottom
+        analysisLogs.scrollTop = analysisLogs.scrollHeight;
+        
+        // Update statistics based on the log content
+        updateStatsFromLog(text);
+    }
+    
+    // Update statistics from log text
+    function updateStatsFromLog(text) {
+        if (!recipesProcessed || !recipesMatched || !perfectMatches) return;
+        
+        // Update processed count
+        if (text.includes("Total processed:")) {
+            const match = text.match(/Total processed: (\d+)/);
+            if (match && match[1]) {
+                recipesProcessed.textContent = match[1];
+            }
+        }
+        else if (text.includes("Processed ") && text.includes("recipes")) {
+            const match = text.match(/Processed (\d+)/);
+            if (match && match[1]) {
+                recipesProcessed.textContent = match[1];
+            }
+        }
+        
+        // Update matches count
+        if (text.includes("Found") && text.includes("dataset matches")) {
+            const match = text.match(/Found (\d+) dataset matches/);
+            if (match && match[1]) {
+                recipesMatched.textContent = match[1];
+            }
+        }
+        else if (text.includes("Total matches:")) {
+            const match = text.match(/Total matches: (\d+)/);
+            if (match && match[1]) {
+                recipesMatched.textContent = match[1];
+            }
+        }
+        
+        // Update perfect matches count
+        if (text.includes("Perfect matches:")) {
+            const match = text.match(/Perfect matches: (\d+)/);
+            if (match && match[1]) {
+                perfectMatches.textContent = match[1];
+            }
+        }
+        else if (text.includes("PERFECT MATCH:")) {
+            const currentCount = parseInt(perfectMatches.textContent) || 0;
+            perfectMatches.textContent = (currentCount + 1).toString();
+        }
+    }
+    
+    // Override console.log to capture recipe analysis output
+    console.log = function() {
+        // Call original console.log
+        originalConsoleLog.apply(console, arguments);
+        
+        // Extract message text
+        const logText = arguments[0] ? String(arguments[0]) : '';
+        
+        // Only capture recipe-related logs
+        if (logText.includes('ingredient') || 
+            logText.includes('recipe') || 
+            logText.includes('Recipe') || 
+            logText.includes('match') || 
+            logText.includes('Match') ||
+            logText.includes('Skipped') || 
+            logText.includes('Processing') || 
+            logText.includes('Progress') ||
+            logText.includes('Sorting') || 
+            logText.includes('INGREDIENT TRACKING') ||
+            logText.includes('Filtered') ||
+            logText.includes('PERFECT MATCH')) {
+            
+            // Determine log type
+            let logType = 'info';
+            if (logText.includes('Error') || logText.includes('error')) {
+                logType = 'error';
+            } else if (logText.includes('PERFECT MATCH')) {
+                logType = 'success';
+            } else if (logText.includes('Processing') || logText.includes('Progress')) {
+                logType = 'progress';
+            } else if (logText.includes('Sorting') || logText.includes('Filtered') || logText.includes('===')) {
+                logType = 'highlight';
+            }
+            
+            // Add to log display
+            addLogLine(logText, logType);
+        }
+    };
+    
+    // Override console.error for error logs
+    console.error = function() {
+        originalConsoleError.apply(console, arguments);
+        const logText = arguments[0] ? String(arguments[0]) : '';
+        if (logText.includes('Recipe') || logText.includes('recipe') || logText.includes('ingredient')) {
+            addLogLine(logText, 'error');
+        }
+    };
+    
+    // Also capture warning logs
+    console.warn = function() {
+        originalConsoleWarn.apply(console, arguments);
+        const logText = arguments[0] ? String(arguments[0]) : '';
+        if (logText.includes('Recipe') || logText.includes('recipe') || logText.includes('ingredient')) {
+            addLogLine(logText, 'highlight');
+        }
+    };
+    
+    // Restore original console functions after page load completion
+    window.addEventListener('load', function() {
+        // Wait an additional 10 seconds to ensure all logs are captured
+        setTimeout(function() {
+            console.log = originalConsoleLog;
+            console.error = originalConsoleError;
+            console.warn = originalConsoleWarn;
+            console.log("Console logging restored to normal");
+        }, 10000);
+    });
+    
+    // Add a log line indicating logger is ready
+    setTimeout(function() {
+        addLogLine("Recipe analysis log initialized and ready to capture output", "highlight");
+    }, 100);
 });
 </script>
 {% endblock %}

@@ -40,12 +40,35 @@
                 </fieldset>
                 <button type="submit" class="btn btn-primary btn-block" style="width: 100%; padding: 10px; background-color: #ff6347; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; margin-top: 10px;">Login</button>
             </form>
-            <div class="switch" style="text-align: center; margin-top: 10px; font-size: 0.9em; color: #555;">
+            
+            <!-- Password Reset Link -->
+            <div class="password-reset" style="text-align: center; margin-top: 15px;">
+                <a href="{% url 'password_reset' %}" style="color: #ff6347; text-decoration: none; font-size: 0.9em;">Forgot your password?</a>
+            </div>
+            
+            <div class="switch" style="text-align: center; margin-top: 15px; font-size: 0.9em; color: #555;">
                 Don't have an account? <a href="{% url 'user-register' %}" style="color: #ff6347; text-decoration: none;">Register here</a>
             </div>
         </div>
     </div>
 </div>
 
-
+<!-- Responsive styles for mobile -->
+<style>
+    @media (max-width: 768px) {
+        .container-fluid {
+            flex-direction: column;
+        }
+        .left-section, .right-section {
+            width: 100%;
+            min-height: auto;
+        }
+        .left-section {
+            padding-bottom: 30px;
+        }
+        .visual-content h2 {
+            font-size: 2.5em;
+        }
+    }
+</style>
 {% endblock content %}

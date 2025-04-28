@@ -5,19 +5,18 @@ from recipes.models import ScrapedRecipe, RecipeIngredient
 import os
 import django
 
-# Set up Django environment
+#set up Django environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-# Now import your models
 from recipes.models import ScrapedRecipe, RecipeIngredient
 from recipes.scraper import scrape_bbc_food
 
 
 def scrape_bbc_food(ingredient):
-    """
-    Scrapes BBC Food for recipes containing the given ingredient.
-    """
+    
+    #scrapes BBC Food for recipes containing the given ingredient.
+    
     search_url = f"https://www.bbc.co.uk/food/search?q={ingredient}"
     headers = {"User-Agent": "Mozilla/5.0"}
     
@@ -29,7 +28,7 @@ def scrape_bbc_food(ingredient):
     soup = BeautifulSoup(response.text, 'html.parser')
     recipes = []
     
-    # Locate recipe containers (modify based on actual HTML structure)
+    #locate recipe containers
     recipe_cards = soup.find_all("div", class_="gel-layout__item")
     
     for card in recipe_cards:
@@ -47,18 +46,18 @@ def scrape_bbc_food(ingredient):
         image_tag = card.find("img")
         image_url = image_tag["src"] if image_tag else None
         
-        # Fetch detailed recipe page
+        #fetch detailed recipe page
         recipe_response = requests.get(url, headers=headers)
         recipe_soup = BeautifulSoup(recipe_response.text, 'html.parser')
         
         instructions_section = recipe_soup.find("ol", class_="recipe-method__list")
         instructions = "\n".join([step.text.strip() for step in instructions_section.find_all("li")]) if instructions_section else "No instructions found."
         
-        # Extract ingredients
+        #extract the ingredients
         ingredients_section = recipe_soup.find_all("li", class_="recipe-ingredients__list-item")
         ingredients = [ing.text.strip() for ing in ingredients_section] if ingredients_section else []
         
-        # Save recipe to database
+        #save recipe to database
         scraped_recipe = ScrapedRecipe.objects.create(
             title=title,
             url=url,

@@ -27,6 +27,16 @@
         </div>
     </div>
 
+    <!-- Recipe Difficulty Badge -->
+    {% with difficulty=recipe|get_difficulty %}
+    <div class="mb-3">
+        <span class="badge bg-{{ difficulty.class }} p-2">
+            <i class="fas {{ difficulty.icon }} me-1"></i> Difficulty: {{ difficulty.level }}
+        </span>
+        <small class="text-muted ms-2">Based on ingredient count</small>
+    </div>
+    {% endwith %}
+
     <!-- Recipe image  -->
     <div style="margin-bottom: 30px; text-align: center;">
         {% if recipe.image %}
@@ -38,7 +48,7 @@
         {% endif %}
     </div>
     
-    <!-- Recipe meta Info -->
+    <!-- Recipe Info -->
     <div style="background-color: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; text-align: center;">
             <div>

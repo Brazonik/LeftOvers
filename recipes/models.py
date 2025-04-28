@@ -1,22 +1,48 @@
 import json
+from django import forms
 from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import date
 import re
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     source = models.CharField(max_length=50, choices=[('dataset', 'Dataset'), ('bbc', 'BBC Food')], default='dataset')
     url = models.URLField(null=True, blank=True)
-    ingredients = models.TextField(null=True, blank=True, default='[]')
+    ingredients = models.TextField(default='[]')
     instructions = models.TextField(null=True, blank=True, default='')
-    prep_time = models.IntegerField(null=True, blank=True)
+    prep_time = models.CharField(max_length=20, null=True, blank=True)
+    cook_time = models.CharField(max_length=20, null=True, blank=True)
     servings = models.IntegerField(null=True, blank=True)
     nutrition_info = models.JSONField(null=True, blank=True)
-    author = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)    
+    author = models.ForeignKey(User, on_delete=models.CASCADE, null=True)    
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    ingredients_parts = models.TextField(default='[]')
+    ingredients_quantities = models.TextField(default='[]')
+    images = models.TextField(default='[]')  
+    image = models.ImageField(upload_to='recipe_images/', null=True, blank=True)
+    created_by_user = models.BooleanField(default=False) 
+    is_premium = models.BooleanField(default=False)  
+    points_cost = models.PositiveIntegerField(default=10) 
+    calories = models.IntegerField(null=True, blank=True)
+    fat = models.FloatField(null=True, blank=True, help_text="Fat in grams")
+    carbs = models.FloatField(null=True, blank=True, help_text="Carbohydrates in grams")
+    protein = models.FloatField(null=True, blank=True, help_text="Protein in grams")
+
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted for Review'),
+        ('approved', 'Approved'),
+        ('premium', 'Premium'),
+        ('rejected', 'Rejected')
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    admin_notes = models.TextField(blank=True, null=True, help_text="Private notes for admins reviewing this recipe")
 
     def get_absolute_url(self):
         return reverse("recipes-detail", kwargs={"pk": self.pk})
@@ -29,11 +55,91 @@ class Recipe(models.Model):
     
     def get_ingredient_list(self):
         return json.loads(self.ingredients)
+        
+    def get_ingredients(self):
+        try:
+            if not self.ingredients:
+                return []
+                
+            if isinstance(self.ingredients, list):
+                return self.ingredients
+                
+            if self.ingredients_parts and self.ingredients_parts != '[]':
+                if isinstance(self.ingredients_parts, str) and self.ingredients_parts.startswith('['):
+                    try:
+                        import json
+                        return json.loads(self.ingredients_parts.replace("'", '"'))
+                    except:
+                        pass
+                
+            if isinstance(self.ingredients, str):
+                if self.ingredients.startswith('['):
+                    try:
+                        import json
+                        ingredients_list = json.loads(self.ingredients.replace("'", '"'))
+                        return ingredients_list
+                    except:
+                        pass
+                        
+                if '•' in self.ingredients:
+                    clean_text = self.ingredients.strip('[]')
+                    parts = clean_text.split(',')
+                    clean_parts = []
+                    for part in parts:
+                        clean_part = re.sub(r'[^a-zA-Z0-9 ,]', '', part).strip()
+                        if clean_part:
+                            clean_parts.append(clean_part)
+                    return clean_parts
+                
+                if ',' in self.ingredients:
+                    return [item.strip() for item in self.ingredients.split(',') if item.strip()]
+                    
+            try:
+                return self.get_ingredient_list()
+            except:
+                pass
+            
+            return [self.ingredients] if self.ingredients else []
+        except Exception as e:
+            print(f"Error parsing ingredients for {self.title}: {str(e)}")
+            return []
+        
+    
+    
+    def has_image(self):
+        try:
+            if self.image:
+                return True
+                
+            if hasattr(self, 'images') and self.images:
+                if self.images.startswith('['):
+                    import json
+                    images = json.loads(self.images)
+                    return len(images) > 0
+                return bool(self.images)
+            return False
+        except Exception as e:
+            print(f"Error checking image for {self.title}: {str(e)}")
+            return False
+    
+    def get_primary_image_url(self):
+        try:
+            if self.images and self.images != '[]':
+                if isinstance(self.images, list) and len(self.images) > 0:
+                    return self.images[0]
+                
+                if isinstance(self.images, str) and self.images.startswith('['):
+                    import json
+                    images_list = json.loads(self.images.replace("'", '"'))
+                    if images_list and len(images_list) > 0:
+                        return images_list[0]
+            return None
+        except Exception as e:
+            print(f"Error getting image for {self.title}: {str(e)}")
+            return None
 
-    # Keep other Recipe methods...
 
     def get_categories(self):
-        """Automatically determine categories based on recipe content"""
         categories = []
         text_to_check = f"{self.title.lower()} {self.description.lower()}"
         
@@ -157,17 +263,13 @@ class ShoppingListItem(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
 
     def is_expired(self):
-        """Check if the ingredient has expired"""
         return self.expiration_date and self.expiration_date < date.today()
 
     def __str__(self):
         return f"{self.quantity} of {self.ingredient_name} (Exp: {self.expiration_date})"   
 
 class TrackedIngredient(models.Model):
-    """
-    Tracks ingredients that users currently have in their kitchen.
-    Used for matching with web-scraped recipes.
-    """
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     ingredient_name = models.CharField(max_length=255)
     quantity = models.CharField(max_length=50, blank=True, null=True)
@@ -182,12 +284,10 @@ class TrackedIngredient(models.Model):
 
 
 class ScrapedRecipe(models.Model):
-    """
-    Stores recipes that were scraped from Spoonacular API.
-    """
+    
     title = models.CharField(max_length=255)
     url = models.URLField()
-    image = models.URLField(blank=True, null=True)  # Store recipe image
+    image = models.URLField(blank=True, null=True)  
     instructions = models.TextField()
     ready_in_minutes = models.IntegerField(default=0)
     servings = models.IntegerField(default=1)
@@ -195,22 +295,46 @@ class ScrapedRecipe(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def clean_instructions(self):
+        #Clean up encoding issues in instruction text
+        if not self.instructions:
+            return ""
+        
+        text = self.instructions
+        text = text.replace("Â", "")  
+        text = text.replace("â\x80\x93", "-")  
+        text = text.replace("â\x80\x99", "'")  
+        
+        
+        return text
 
 
 class RecipeIngredient(models.Model):
-    """
-    Represents an ingredient that may or may not be linked to a recipe.
-    Users can select standalone ingredients to generate a recipe.
-    """
+    
     recipe = models.ForeignKey(ScrapedRecipe, on_delete=models.CASCADE, related_name='ingredients', null=True, blank=True)
     name = models.CharField(max_length=255)
     amount = models.FloatField(null=True, blank=True)
     unit = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.amount} {self.unit} {self.name}" if self.amount else self.name
+        clean_name = self.clean_text()
+        return f"{self.amount} {self.unit} {clean_name}" if self.amount else clean_name
+    
+    def clean_text(self):
+        #Clean up encoding issues in ingredient text
+        if not self.name:
+            return ""
+        
+        text = self.name
+        text = text.replace("Â", "")  
+        text = text.replace("â\x80\x93", "-")  
+        text = text.replace("â\x80\x99", "'")  
+        
+        
+        return text
 
-class DatasetRecipe(models.Model):
+"""class DatasetRecipe(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     cook_time = models.CharField(max_length=50, default='Unknown')
     prep_time = models.CharField(max_length=50, default='Unknown')
@@ -225,15 +349,40 @@ class DatasetRecipe(models.Model):
     instructions = models.TextField(default='')
     ingredients_list = models.TextField(default='[]')
     
-    # Nutrition info
     calories = models.FloatField(default=0, db_index=True)
     protein = models.FloatField(default=0)
     carbs = models.FloatField(default=0)
     fat = models.FloatField(default=0)
     
-    # Recipe details
     instructions = models.TextField(default='')
     ingredients_list = models.TextField(default='[]')
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["name"]),
+            models.Index(fields=["category"]),
+            models.Index(fields=["calories"]),
+        ]
+        
+    def __str__(self):
+        return self.name"""
+    
+class DatasetRecipe(models.Model):
+    name = models.CharField(max_length=255, db_index=True)
+    cook_time = models.CharField(max_length=50, default='Unknown')
+    prep_time = models.CharField(max_length=50, default='Unknown')
+    category = models.CharField(max_length=100, default='Uncategorized', db_index=True)
+    servings = models.IntegerField(default=4)
+    ingredients_parts = models.TextField(default='[]')
+    ingredients_quantities = models.TextField(default='[]')
+    calories = models.FloatField(default=0, db_index=True)
+    protein = models.FloatField(default=0)
+    carbs = models.FloatField(default=0)
+    fat = models.FloatField(default=0)
+    instructions = models.TextField(default='')
+    ingredients_list = models.TextField(default='[]')
+    images = models.TextField(default='[]')  
+    description = models.TextField(blank=True, null=True)
 
     class Meta:
         indexes = [
@@ -250,47 +399,79 @@ class DatasetRecipe(models.Model):
             if not self.ingredients_parts:
                 return []
                 
-            # Convert "c(...)" format string into a list
-            text = self.ingredients_parts
-            if text.startswith('c('):
-                text = text[2:-1]  # Remove c( and )
+            if isinstance(self.ingredients_parts, list):
+                return [ing.lower() for ing in self.ingredients_parts if ing]
                 
-            # Split on commas and clean each ingredient
+            if self.ingredients_parts.startswith('['):
+                try:
+                    import json
+                    ingredients = json.loads(self.ingredients_parts)
+                    return [ing.lower() for ing in ingredients if ing]
+                except:
+                    pass
+            
             ingredients = []
+            text = self.ingredients_parts.strip('[]')
             for ingredient in text.split(','):
-                # Remove quotes, spaces, and normalize
-                cleaned = ingredient.replace('"', '').strip()
+                cleaned = ingredient.replace('"', '').strip("'").strip()
                 if cleaned:
                     ingredients.append(cleaned.lower())
-                    
             return ingredients
         except Exception as e:
             print(f"Error parsing ingredients for {self.name}: {str(e)}")
             return []
 
-    def get_clean_name(self):
-        return self.name
-
-    def get_prep_time_display(self):
-        return self.prep_time
-
-    def get_cook_time_display(self):
-        return self.cook_time
-
-
     def get_full_ingredients(self):
         try:
-            quantities = self.ingredients_quantities.replace('c(', '').replace(')', '')
-            quantities = [q.strip('"').strip() for q in quantities.split(',') if q.strip()]
-            parts = self.ingredients_parts.replace('c(', '').replace(')', '')
-            parts = [p.strip('"').strip() for p in parts.split(',') if p.strip()]
+            if isinstance(self.ingredients_quantities, list):
+                quantities = self.ingredients_quantities
+            elif self.ingredients_quantities and self.ingredients_quantities.startswith('['):
+                try:
+                    import ast
+                    quantities = ast.literal_eval(self.ingredients_quantities)
+                except:
+                    quantities = []
+            elif self.ingredients_quantities and self.ingredients_quantities.startswith('c('):
+                text = self.ingredients_quantities[2:-1]
+                quantities = [q.strip('"').strip() for q in text.split(',') if q.strip()]
+            else:
+                quantities = []
+
+            if isinstance(self.ingredients_parts, list):
+                parts = self.ingredients_parts
+            elif self.ingredients_parts and self.ingredients_parts.startswith('['):
+                try:
+                    import ast
+                    parts = ast.literal_eval(self.ingredients_parts)
+                except:
+                    parts = []
+            elif self.ingredients_parts and self.ingredients_parts.startswith('c('):
+                text = self.ingredients_parts[2:-1]
+                parts = [p.strip('"').strip() for p in text.split(',') if p.strip()]
+            else:
+                parts = []
+
+            min_length = min(len(quantities), len(parts))
+            quantities = quantities[:min_length]
+            parts = parts[:min_length]
+            
             return [f"{q} {p}" for q, p in zip(quantities, parts)]
+            
         except Exception as e:
             print(f"Error getting full ingredients for {self.name}: {str(e)}")
             return []
-    
-        
-def format_time(self, time_str):
+
+    def get_clean_name(self):
+        import html
+        return html.unescape(self.name)
+
+    def get_prep_time_display(self):
+        return self.format_time(self.prep_time)
+
+    def get_cook_time_display(self):
+        return self.format_time(self.cook_time)
+
+    def format_time(self, time_str):
         if not time_str or time_str == 'Unknown':
             return 'Not specified'
         try:
@@ -306,17 +487,22 @@ def format_time(self, time_str):
             return time_str
         except:
             return 'Not specified'
-
-def get_prep_time_display(self):
-        return self.format_time(self.prep_time)
-
-def get_cook_time_display(self):
-        return self.format_time(self.cook_time)
-
-def get_clean_name(self):
-        import html
-        return html.unescape(self.name)
-
+        
+    def has_image(self):
+        try:
+            if self.images and self.images != '[]':
+                if isinstance(self.images, list) and len(self.images) > 0:
+                    return True
+                
+                if isinstance(self.images, str) and self.images.startswith('['):
+                    import json
+                    images_list = json.loads(self.images.replace("'", '"'))
+                    if images_list and len(images_list) > 0:
+                        return True
+            return False
+        except Exception as e:
+            print(f"Error checking image for {self.name}: {str(e)}")
+            return False
    
 
 class DatasetIngredient(models.Model):
@@ -330,3 +516,81 @@ class DatasetIngredient(models.Model):
         indexes = [
             models.Index(fields=['name'])
         ]
+
+
+class SavedDatasetRecipe(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(DatasetRecipe, on_delete=models.CASCADE)
+    saved = models.BooleanField(default=True)
+    saved_date = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'recipe')
+        
+    def __str__(self):
+        return f"{self.user.username} - {self.recipe.name}"
+
+
+class TriedRecipe(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(Recipe, on_delete=models.SET_NULL, null=True, blank=True)
+    dataset_recipe = models.ForeignKey(DatasetRecipe, on_delete=models.SET_NULL, null=True, blank=True)
+    scraped_recipe = models.ForeignKey(ScrapedRecipe, on_delete=models.SET_NULL, null=True, blank=True)  
+    tried_at = models.DateTimeField(auto_now_add=True)
+    points_earned = models.IntegerField(default=10)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                condition=models.Q(recipe__isnull=False),
+                name='unique_user_recipe'
+            ),
+            models.UniqueConstraint(
+                fields=['user', 'dataset_recipe'],
+                condition=models.Q(dataset_recipe__isnull=False),
+                name='unique_user_dataset_recipe'
+            ),
+            models.UniqueConstraint(
+                fields=['user', 'scraped_recipe'],
+                condition=models.Q(scraped_recipe__isnull=False),
+                name='unique_user_scraped_recipe'
+            ),
+        ]
+    
+    def __str__(self):
+        if self.recipe:
+            recipe_name = self.recipe.title
+        elif self.dataset_recipe:
+            recipe_name = self.dataset_recipe.name
+        elif self.scraped_recipe:
+            recipe_name = self.scraped_recipe.title
+        else:
+            recipe_name = "Unknown Recipe"
+            
+        return f"{self.user.username} tried {recipe_name}"
+    
+class ShopRecipe(models.Model):
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='shop_listing')
+    points_cost = models.IntegerField(default=50)
+    featured = models.BooleanField(default=False)
+    added_to_shop = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.recipe.title} ({self.points_cost} points)"
+
+class PurchasedRecipe(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchased_recipes')
+    recipe = models.ForeignKey('Recipe', on_delete=models.CASCADE)
+    purchased_at = models.DateTimeField(auto_now_add=True)
+    points_spent = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = ['user', 'recipe']
+        
+    def __str__(self):
+        return f"{self.user.username} purchased {self.recipe.title}"
+    
+
+
+

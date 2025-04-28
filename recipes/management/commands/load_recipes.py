@@ -16,16 +16,16 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         try:
             self.stdout.write('Starting to read CSV file...')
-            # Use the recipes_subset_clean.csv 
+            #use the recipes_subset_clean.csv 
             df = pd.read_csv('data/recipes_subset_clean.csv')
             total_recipes = len(df)
             self.stdout.write(f'Found {total_recipes} recipes in CSV')
             #counts number of recipes in the CSV file
 
-            # Clear existing recipes first
+            #clear existing recipes first
             DatasetRecipe.objects.all().delete()
 
-            # Bulk create in batches
+            #bulk create in batches
             with transaction.atomic():
                 batch_size = 1000
                 #empty list to store recipes
@@ -62,9 +62,9 @@ class Command(BaseCommand):
                     if len(recipes_to_create) >= batch_size:
                         DatasetRecipe.objects.bulk_create(recipes_to_create)
                         recipes_to_create = []
-                        # Create recipes in batches of 1000
+                        #create recipes in batches of 1000
                 
-                # Create any remaining recipes
+                #create any remaining recipes
                 if recipes_to_create:
                     DatasetRecipe.objects.bulk_create(recipes_to_create)
                     

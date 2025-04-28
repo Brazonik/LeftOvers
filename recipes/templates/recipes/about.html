@@ -1,3 +1,6 @@
+<!-- This is a Django template for the About page of a recipe website. It includes sections for the mission, features, user reviews, and team members. -->
+
+{% load static %}
 {% extends 'recipes/base.html' %}
 {% block content %}
 
@@ -76,7 +79,7 @@
     <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; max-width: 800px; margin: 0 auto;">
         <div style="width: 350px; padding: 20px; background-color: white; border-radius: 10px; text-align: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
             <p style="color: #555;">"This website helped me cook with ingredients I already had in my kitchen. So useful!"</p>
-            <h4 style="color: #ff6347;">- Sarah L.</h4>
+            <h4 style="color: #ff6347;">- Klaudia Wiktoria Emily.</h4>
         </div>
         <div style="width: 350px; padding: 20px; background-color: white; border-radius: 10px; text-align: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
             <p style="color: #555;">"Great recipes and easy-to-use shopping list. I love the ingredient tracking feature!"</p>
@@ -89,13 +92,10 @@
 <div style="padding: 50px 20px; text-align: center; background-color:rgb(250, 250, 250); margin-top: -20px;">
     <h3 style="color: #ff6347; font-size: 2em; margin-bottom: 20px;">Meet the Team</h3>
     <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; max-width: 1200px; margin: 0 auto;">
-        <div style="width: 250px; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); text-align: center;">
-            <img src="https://via.placeholder.com/100" alt="Profile Picture" style="width: 100px; height: auto; border-radius: 50%; margin-bottom: 15px;">
-            <h4 style="font-size: 1.2em; color: #ff6347;">Mo</h4>
+        <div style="width: 250px; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); text-align: center;">            <h4 style="font-size: 1.2em; color: #ff6347;">Mo</h4>
             <p style="color: #555;">Founder & Recipe Enthusiast</p>
         </div>
         <div style="width: 250px; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); text-align: center;">
-            <img src="https://via.placeholder.com/100" alt="Profile Picture" style="width: 100px; height: auto; border-radius: 50%; margin-bottom: 15px;">
             <h4 style="font-size: 1.2em; color: #ff6347;">Moh</h4>
             <p style="color: #555;">Lead Developer</p>
         </div>

@@ -1,3 +1,4 @@
+<!-- This template if for the home page of the website -->
 {% extends 'recipes/base.html' %}
 {% load recipe_filters %}
 {% block content %}
@@ -13,31 +14,45 @@
     </button>
 </form>
 
+<!-- Mobile Filter Button -->
+<div id="mobileFilterButton" 
+    style="display: none; position: fixed; bottom: 20px; right: 20px; background-color: #ff6347; color: white; border-radius: 50%; width: 60px; height: 60px; text-align: center; line-height: 60px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; cursor: pointer;">
+    <i style="font-size: 24px;">⚙️</i>
+</div>
+
 <!--  Filter Section -->
-<div style="position: fixed; top: 120px; left: 20px; width: 200px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); padding: 15px; z-index: 999; text-align: center;">
+<div id="filterSection" style="position: fixed; top: 120px; left: 20px; width: 200px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); padding: 15px; z-index: 999; text-align: center;">
     <h3 style="font-size: 1em; color: #ff6347; margin-bottom: 10px; font-weight: bold;">Filter Recipes</h3>
     
     <form method="GET">
-        <!-- Preserve any existing query -->
         {% if query %}
         <input type="hidden" name="q" value="{{ query }}">
         {% endif %}
         
         <label for="like" style="font-size: 0.9em; display: block; margin: 5px 0; color: #555;">Category</label>
-        <select id="like" name="category" style="width: 100%; padding: 12px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1em; outline: none;">
+        <select id="like" name="category" style="width: 100%; padding: 12px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1em; outline: none; margin-bottom: 15px;">
             {% for value, label in filter_options %}
                 <option value="{{ value }}" {% if value == selected_category %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
 
-        
+        <!-- Difficulty Filter -->
+        <label for="difficultyFilter" style="font-size: 0.9em; display: block; margin: 5px 0; color: #555;">Difficulty</label>
+        <select id="difficulty" name="difficulty" style="width: 100%; padding: 12px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1em; outline: none; margin-bottom: 15px;">
+            <option value="">Any Difficulty</option>
+            <option value="beginner" {% if selected_difficulty == 'beginner' %}selected{% endif %}>Beginner (≤ 3 ingredients)</option>
+            <option value="easy" {% if selected_difficulty == 'easy' %}selected{% endif %}>Easy (4-6 ingredients)</option>
+            <option value="medium" {% if selected_difficulty == 'medium' %}selected{% endif %}>Medium (7-8 ingredients)</option>
+            <option value="hard" {% if selected_difficulty == 'hard' %}selected{% endif %}>Hard (9-12 ingredients)</option>
+            <option value="insane" {% if selected_difficulty == 'insane' %}selected{% endif %}>Insane (>12 ingredients)</option>
+        </select>
 
         <button type="submit" style="width: 100%; padding: 12px 24px; background-color: #ff6347; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; margin-top: 15px;">Apply Filters</button>
     </form>
 </div>
 
 <!--  Recipes Container -->
-<div style="margin-left: 270px; margin-right: 50px; margin-top: 80px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+<div id="recipesContainer" style="margin-left: 270px; margin-right: 50px; margin-top: 80px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
     {% if recipes %}
         {% for recipe in recipes %}
             {% include 'recipes/recipe_card.html' with recipe=recipe %}
@@ -49,13 +64,13 @@
 
 <!-- Pagination Section -->
 {% if recipes.has_other_pages %}
-<div style="display: flex; justify-content: center; align-items: center; margin: 30px 0; margin-left: 270px;">
+<div id="paginationContainer" style="display: flex; justify-content: center; align-items: center; margin: 30px 0; margin-left: 270px;">
     {% if recipes.has_previous %}
-        <a href="?page=1{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}" 
+        <a href="?page=1{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty }}{% endif %}{% if show_all %}&show_all=true{% endif %}" 
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             First
         </a>
-        <a href="?page={{ recipes.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
+        <a href="?page={{ recipes.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Previous
         </a>
@@ -66,16 +81,107 @@
     </span>
 
     {% if recipes.has_next %}
-        <a href="?page={{ recipes.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
+        <a href="?page={{ recipes.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Next
         </a>
-        <a href="?page={{ recipes.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
+        <a href="?page={{ recipes.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty }}{% endif %}{% if show_all %}&show_all=true{% endif %}"
            style="color: #ff6347; padding: 8px 16px; text-decoration: none; background-color: white; border: 1px solid #ff6347; margin: 0 4px; border-radius: 4px; transition: all 0.2s ease;">
             Last
         </a>
     {% endif %}
 </div>
 {% endif %}
+
+<!-- Modal for mobile filters -->
+<div id="filterModal" style="display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7);">
+    <div style="background-color: white; margin: 20% auto; padding: 20px; width: 80%; border-radius: 15px; max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="font-size: 1.2em; color: #ff6347; margin: 0; font-weight: bold;">Filter Recipes</h3>
+            <span id="closeModal" style="font-size: 24px; cursor: pointer; color: #ff6347;">&times;</span>
+        </div>
+        
+        <form method="GET">
+            {% if query %}
+            <input type="hidden" name="q" value="{{ query }}">
+            {% endif %}
+            
+            <label for="mobileLike" style="font-size: 1em; display: block; margin: 10px 0; color: #555;">Category</label>
+            <select id="mobileLike" name="category" style="width: 100%; padding: 15px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1.1em; margin-bottom: 20px;">
+                {% for value, label in filter_options %}
+                    <option value="{{ value }}" {% if value == selected_category %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            
+            <!-- Mobile Difficulty Filter -->
+            <label for="mobileDifficulty" style="font-size: 1em; display: block; margin: 10px 0; color: #555;">Difficulty</label>
+            <select id="mobileDifficulty" name="difficulty" style="width: 100%; padding: 15px; border: 1px solid #ff6347; border-radius: 8px; font-size: 1.1em; margin-bottom: 20px;">
+                <option value="">Any Difficulty</option>
+                <option value="beginner" {% if selected_difficulty == 'beginner' %}selected{% endif %}>Beginner (≤ 3 ingredients)</option>
+                <option value="easy" {% if selected_difficulty == 'easy' %}selected{% endif %}>Easy (4-6 ingredients)</option>
+                <option value="medium" {% if selected_difficulty == 'medium' %}selected{% endif %}>Medium (7-8 ingredients)</option>
+                <option value="hard" {% if selected_difficulty == 'hard' %}selected{% endif %}>Hard (9-12 ingredients)</option>
+                <option value="insane" {% if selected_difficulty == 'insane' %}selected{% endif %}>Insane (>12 ingredients)</option>
+            </select>
+            
+            <button type="submit" style="width: 100%; padding: 15px; background-color: #ff6347; color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold;">Apply Filters</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    //function to handle responsive layout
+    function handleResponsiveLayout() {
+        const filterSection = document.getElementById('filterSection');
+        const mobileFilterButton = document.getElementById('mobileFilterButton');
+        const recipesContainer = document.getElementById('recipesContainer');
+        const paginationContainer = document.getElementById('paginationContainer');
+        
+        if (window.innerWidth <= 900) { 
+            filterSection.style.display = 'none';
+            mobileFilterButton.style.display = 'block';
+            recipesContainer.style.marginLeft = '20px';
+            recipesContainer.style.marginRight = '20px';
+            recipesContainer.style.gridTemplateColumns = 'repeat(1, 1fr)'; 
+            if (paginationContainer) {
+                paginationContainer.style.marginLeft = '0';
+            }
+        } else {
+            filterSection.style.display = 'block';
+            mobileFilterButton.style.display = 'none';
+            recipesContainer.style.marginLeft = '270px';
+            recipesContainer.style.marginRight = '50px';
+            recipesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)'; 
+            if (paginationContainer) {
+                paginationContainer.style.marginLeft = '270px';
+            }
+        }
+    }
+    
+    // Modal functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('filterModal');
+        const mobileFilterButton = document.getElementById('mobileFilterButton');
+        const closeModal = document.getElementById('closeModal');
+        
+        mobileFilterButton.addEventListener('click', function() {
+            modal.style.display = 'block';
+        });
+        
+        closeModal.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        handleResponsiveLayout();
+        
+        window.addEventListener('resize', handleResponsiveLayout);
+    });
+</script>
 
 {% endblock content %}

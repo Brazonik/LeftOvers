@@ -1,12 +1,7 @@
-<!-- This template displays the details of a purchased recipe, including its title, image, instructions, ingredients, and action buttons. It is designed to be visually appealing and user-friendly. -->
-
-
-
 {% extends 'recipes/base.html' %}
 {% load recipe_filters %}
-
 {% block content %}
-<!-- Container for recipe details -->
+
 <div style="max-width: 800px; margin: 40px auto; padding: 20px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
     <!-- Breadcrumb navigation -->
     <div style="margin-bottom: 20px;">
@@ -15,11 +10,19 @@
         <span style="color: #333;">{{ recipe.title }}</span>
     </div>
 
-    <!-- Recipe title -->
-    <h1>{{ recipe.title }}</h1>
+    <!-- Recipe Title with Difficulty Badge -->
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <h1 style="margin: 0; flex-grow: 1;">{{ recipe.title }}</h1>
+        
+        {% with difficulty=recipe|get_difficulty %}
+        <span class="badge bg-{{ difficulty.class }}" 
+              style="font-size: 1em; padding: 8px 15px; border-radius: 20px;">
+            {{ difficulty.level }}
+        </span>
+        {% endwith %}
+    </div>
     
-
-    
+    <!-- Purchase badge -->
     <div style="display: flex; align-items: center; margin-bottom: 20px;">
         <div style="background-color: #4CAF50; color: white; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 0.8em; margin-right: 15px;">
             Purchased Recipe
@@ -29,99 +32,229 @@
         </div>
     </div>
 
-    <!-- Recipe image -->
-   <div style="margin-bottom: 30px; text-align: center;">
-    {% if recipe.image %}
-        <img src="{{ recipe.image }}" alt="{{ recipe.title }}" 
-             style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
-    {% else %}
-        <img src="https://via.placeholder.com/800x400?text=No+Image+Available" alt="Recipe" 
-             style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
-    {% endif %}
-</div>
-    
-    <!-- Recipe meta Info -->
+    <!-- Recipe Image -->
+    <div style="margin-bottom: 30px; text-align: center;">
+        {% if recipe.image %}
+            {% if recipe.image.url and not recipe.image|stringformat:"s"|startswith:"http" %}
+                <img src="{{ recipe.image.url }}" alt="{{ recipe.title }}"
+                    style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
+            {% else %}
+                {% if recipe.image|stringformat:"s"|startswith:"http" %}
+                    <img src="{{ recipe.image }}" alt="{{ recipe.title }}"
+                        style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
+                {% else %}
+                    <img src="/media/{{ recipe.image }}" alt="{{ recipe.title }}"
+                        style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
+                {% endif %}
+            {% endif %}
+        {% elif recipe|has_image %}
+            <img src="{{ recipe|get_primary_image }}" alt="{{ recipe.title }}" 
+                 style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
+        {% else %}
+            <img src="https://via.placeholder.com/800x400?text=No+Image+Available" alt="Recipe" 
+                 style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
+        {% endif %}
+    </div>
+
+    <!-- Recipe meta info section -->
     <div style="background-color: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; text-align: center;">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Prep Time:</span>
+                <span>{{ prep_time|default:recipe.prep_time|default:"Not specified"|format_duration }}</span>
+            </div>
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Cook Time:</span>
+                <span>{{ cook_time|default:recipe.cook_time|default:"Not specified"|format_duration }}</span>
+            </div>
+            {% if ready_in_minutes %}
             <div>
                 <span style="font-weight: bold; color: #ff6347;">Ready In:</span>
-                <span>{{ recipe.ready_in_minutes }} minutes</span>
+                <span>{{ ready_in_minutes }} minutes</span>
             </div>
+            {% endif %}
             <div>
                 <span style="font-weight: bold; color: #ff6347;">Servings:</span>
-                <span>{{ recipe.servings }}</span>
+                <span>{{ servings|default:recipe.servings|default:"Not specified" }}</span>
+            </div>
+            {% if recipe.author %}
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">By:</span>
+                <span>{{ recipe.author.username }}</span>
+            </div>
+            {% endif %}
+            {% if recipe.created_at %}
+            <div>
+                <span style="font-weight: bold; color: #ff6347;">Created:</span>
+                <span>{{ recipe.created_at|date:"F d, Y" }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Nutritional information -->
+    {% if calories or recipe.calories or fat or recipe.fat or carbs or recipe.carbs or protein or recipe.protein %}
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #ff6347; margin-bottom: 15px;">Nutritional Information</h2>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 10px;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                {% if calories or recipe.calories %}
+                <div>
+                    <span style="font-weight: bold;">Calories:</span>
+                    <span>{{ calories|default:recipe.calories }}</span>
+                </div>
+                {% endif %}
+                {% if fat or recipe.fat %}
+                <div>
+                    <span style="font-weight: bold;">Fat:</span>
+                    <span>{{ fat|default:recipe.fat }}g</span>
+                </div>
+                {% endif %}
+                {% if carbs or recipe.carbs %}
+                <div>
+                    <span style="font-weight: bold;">Carbs:</span>
+                    <span>{{ carbs|default:recipe.carbs }}g</span>
+                </div>
+                {% endif %}
+                {% if protein or recipe.protein %}
+                <div>
+                    <span style="font-weight: bold;">Protein:</span>
+                    <span>{{ protein|default:recipe.protein }}g</span>
+                </div>
+                {% endif %}
             </div>
         </div>
+    </div>
+    {% endif %}
+
+    <!-- Recipe Description -->
+    {% if recipe.description %}
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #ff6347; margin-bottom: 15px;">Description</h2>
+        <p>{{ recipe.description }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Ingredients -->
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #ff6347; margin-bottom: 15px;">Ingredients</h2>
+        <ul style="list-style-type: none; padding: 0;">
+            {% if ingredients|stringformat:"s"|startswith:"[" %}
+                <!-- Handle JSON array format properly -->
+                {% for ingredient in ingredients %}
+                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                        • {{ ingredient }}
+                    </li>
+                {% endfor %}
+            {% else %}
+                {% for ingredient in ingredients %}
+                    {% if ',' in ingredient|stringformat:"s" and not ingredient.name and not ingredient.clean_text %}
+                        {% with ingredient_text=ingredient|stringformat:"s" %}
+                            {% for item in ingredient_text|split:',' %}
+                                <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                                    • {{ item|strip }}
+                                </li>
+                            {% endfor %}
+                        {% endwith %}
+                    {% else %}
+                        <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                            • {% if ingredient.amount and ingredient.unit %}
+                                <strong>{{ ingredient.amount }} {{ ingredient.unit }}</strong>
+                            {% endif %}
+                            {% if ingredient.name %}
+                                {{ ingredient.name }}
+                            {% elif ingredient.clean_text %}
+                                {{ ingredient.clean_text }}
+                            {% else %}
+                                {{ ingredient }}
+                            {% endif %}
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            {% if not ingredients %}
+                <li style="color: #666; font-style: italic;">No ingredients listed</li>
+            {% endif %}
+        </ul>
     </div>
 
     <!-- Instructions -->
     <div style="margin-bottom: 30px;">
         <h2 style="color: #ff6347; margin-bottom: 15px;">Instructions</h2>
-        {% if recipe.instructions %}
+        {% if instructions_list %}
             <div style="line-height: 1.6;">
-                {% if instructions_list %}
-                    <ol style="padding-left: 20px; margin: 0;">
-                        {% for step in instructions_list %}
-                            <li style="margin-bottom: 15px; color: #333;">{{ step }}</li>
-                        {% endfor %}
-                    </ol>
-                {% else %}
-                    {{ recipe.instructions|linebreaks }}
-                {% endif %}
+                <ol style="padding-left: 20px; margin: 0;">
+                    {% for step in instructions_list %}
+                        <li style="margin-bottom: 15px; color: #333;">{{ step }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+        {% elif recipe.instructions %}
+            <div style="line-height: 1.6;">
+                {{ recipe.instructions|linebreaks }}
             </div>
         {% else %}
             <p style="color: #666; font-style: italic;">No instructions available</p>
         {% endif %}
     </div>
 
-    <!-- Ingredients -->
-    <div style="margin-bottom: 30px;">
-        <h2 style="color: #ff6347; margin-bottom: 15px;">Ingredients</h2>
-        <ul style="list-style-type: none; padding: 0;">
-            {% for ingredient in ingredients %}
-                <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                    • {% if ingredient.amount and ingredient.unit %}
-                        <strong>{{ ingredient.amount }} {{ ingredient.unit }}</strong>
-                    {% endif %}
-                    {% if ingredient.name %}
-                        {{ ingredient.name }}
-                    {% elif ingredient.clean_text %}
-                        {{ ingredient.clean_text }}
-                    {% else %}
-                        {{ ingredient }}
-                    {% endif %}
-                </li>
-            {% empty %}
-                <li style="color: #666; font-style: italic;">No ingredients listed</li>
-            {% endfor %}
-        </ul>
-    </div>
-    
+    <form id="csrf-form">
+        {% csrf_token %}
+    </form>
+
     <!-- Action buttons -->
-    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap;">
-        <form method="POST" action="{% url 'mark-scraped-recipe-tried' recipe.id %}">
+    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap; align-items: center;">
+        {% if not is_tried %}
+        <form method="POST" action="{% url 'mark-recipe-tried' recipe.id %}">
             {% csrf_token %}
             <button type="submit" 
                     style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
-                <i class="fas fa-check-circle" style="margin-right: 5px;"></i> Try recipe
+                Try Recipe
             </button>
         </form>
-        
-        {% if ingredients %}
-        <form method="post" action="{% url 'add-scraped-recipe-to-shopping-list' recipe.id %}">
-            {% csrf_token %}
-            <button type="submit" 
-                    style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
-                <i class="fas fa-cart-plus" style="margin-right: 5px;"></i> Add to Shopping List
-            </button>
-        </form>
+        {% else %}
+        <div style="display: inline-block; padding: 12px 24px; background-color: #ddd; color: #666; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+            <i class="fas fa-check-circle" style="margin-right: 5px;"></i> Already Tried
+        </div>
         {% endif %}
         
-        <!-- "View Original" -->
-    <a href="{{ recipe.url }}" target="_blank" 
-    style="display: inline-block; padding: 12px 24px; background-color: #607D8B; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
-     <i class="fas fa-external-link-alt" style="margin-right: 5px;"></i> View Original
- </a>
+        <form method="post" action="{% url 'add-recipe-to-shopping-list' recipe.id %}">
+            {% csrf_token %}
+            <button type="submit" id="add-to-shopping-list" class="btn" data-recipe-id="{{ recipe.id }}" data-is-dataset="false"
+                    style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+                Add to Shopping List
+            </button>
+        </form>
+        
+        {% if recipe.url %}
+        <a href="{{ recipe.url }}" target="_blank" 
+           style="display: inline-block; padding: 12px 24px; background-color: #607D8B; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+            View Original
+        </a>
+        {% endif %}
+        
+        <a href="javascript:history.back()" class="btn"
+           style="display: inline-block; padding: 12px 24px; background-color: #607D8B; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+            Back
+        </a>
     </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    //add to Shopping List functionality
+    const addToShoppingListBtn = document.getElementById('add-to-shopping-list');
+    
+    if (addToShoppingListBtn) {
+        addToShoppingListBtn.addEventListener('click', function(e) {
+            setTimeout(function() {
+                if (confirm('Go to your shopping list?')) {
+                    window.location.href = "/shopping-list/";
+                }
+            }, 500);
+        });
+    }
+});
+</script>
 </div>
-{% endblock %}
+
+{% endblock content %}

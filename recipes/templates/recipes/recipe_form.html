@@ -12,10 +12,25 @@
             <h2 style="color: #ff6347; font-size: 2em; margin-bottom: 8px; font-weight: bold;">{% if form.instance.pk %}Edit{% else %}Create{% endif %} Recipe</h2>
             <p style="color: #666; font-size: 0.9em;">Share your culinary masterpiece</p>
             <div style="width: 40px; height: 3px; background-color: #ff6347; margin: 15px auto;"></div>
+            
+            <!-- Toggle buttons to switch between create and submit -->
+            <div style="display: flex; justify-content: center; margin-top: 15px; gap: 10px;">
+                <a href="{% url 'recipes-create' %}" 
+                   style="padding: 8px 16px; {% if request.resolver_match.url_name == 'recipes-create' %}background-color: #ff6347; color: white;{% else %}background-color: #f5f5f5; color: #666;{% endif %} border-radius: 20px; text-decoration: none; font-weight: bold; transition: all 0.2s;">
+                    Create Recipe
+                </a>
+                <a href="{% url 'submit-recipe-for-review' %}" 
+                   style="padding: 8px 16px; {% if request.resolver_match.url_name == 'submit-recipe-for-review' %}background-color: #ff6347; color: white;{% else %}background-color: #f5f5f5; color: #666;{% endif %} border-radius: 20px; text-decoration: none; font-weight: bold; transition: all 0.2s;">
+                    Submit for Review
+                </a>
+                <a href="{% url 'user-submissions' %}" 
+           style="padding: 8px 16px; {% if request.resolver_match.url_name == 'user-submissions' %}background-color: #ff6347; color: white;{% else %}background-color: #f5f5f5; color: #666;{% endif %} border-radius: 20px; text-decoration: none; font-weight: bold; transition: all 0.2s;">
+            My Submissions
+        </a>
+            </div>
         </div>
         
         <div class="container">
-            <!-- Enctype attribute set to multipart/from-data for file uploads -->
             <form method="Post" enctype="multipart/form-data">
                 {% csrf_token %}
                 
@@ -223,7 +238,13 @@
                 <div style="text-align: center; margin-top: 30px;">
                     <button type="submit" 
                             style="padding: 12px 30px; background-color: #ff6347; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; margin-right: 10px;">
-                        {% if form.instance.pk %}Update{% else %}Create{% endif %} Recipe
+                        {% if request.resolver_match.url_name == 'submit-recipe-for-review' %}
+                            Submit for Review
+                        {% elif form.instance.pk %}
+                            Update Recipe
+                        {% else %}
+                            Create Recipe
+                        {% endif %}
                     </button>
                     
                     <a href="javascript:history.back()" 
@@ -253,6 +274,6 @@
         }
     }
 </script>
-<!-- javascript hadling the image preview. User selects an image and it displays a preview of it -->
+<!-- javascript handling the image preview. User selects an image and it displays a preview of it -->
 
 {% endblock content %}

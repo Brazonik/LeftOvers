@@ -1,7 +1,21 @@
 <!-- Template for the different recipe types -->
 
 {% load recipe_filters %}
-<div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%;">
+
+<div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%; position: relative;">
+    <!-- Badge container for match percentage only -->
+    <div style="position: absolute; top: 10px; right: 10px; z-index: 2;">
+        {% if match and match.match_percentage %}
+            <span class="badge bg-primary" style="font-size: 0.9em; padding: 5px 10px; border-radius: 4px;">
+                {{ match.match_percentage }}% Match
+            </span>
+        {% elif match and match.weighted_percentage %}
+            <span class="badge bg-primary" style="font-size: 0.9em; padding: 5px 10px; border-radius: 4px;">
+                {{ match.weighted_percentage }}% Match
+            </span>
+        {% endif %}
+    </div>
+
     <!-- Recipe image, displays image if available and if not uses placeholder image -->
     {% if recipe|has_image %}
         <div style="height: 280px; overflow: hidden; position: relative;">
@@ -81,12 +95,31 @@
         </div>
         {% endif %}
         
-        <!-- View Recipe Button -->
-        <div style="margin-top: auto;">
-            <a href="{% if recipe.recipe_type == 'dataset' %}{% url 'dataset-recipe-detail' recipe.pk %}{% else %}{% url 'recipes-detail' recipe.pk %}{% endif %}"
-               style="display: inline-block; background-color: #ff6347; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 0.85em;">
-                View Recipe
-            </a>
+        <!-- View Recipe Button with Difficulty Badge -->
+        <div style="margin-top: auto; display: flex; align-items: center; gap: 10px;">
+            {% if recipe.recipe_type == 'dataset' %}
+                <a href="{% url 'dataset-recipe-detail' recipe.pk %}" 
+                   style="display: inline-block; flex-grow: 1; padding: 8px 16px; background-color: #ff6347; color: white; border: none; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 0.85em; text-align: center;">
+                    View Recipe
+                </a>
+            {% else %}
+                <a href="{% url 'recipes-detail' recipe.pk %}" 
+                   style="display: inline-block; flex-grow: 1; padding: 8px 16px; background-color: #ff6347; color: white; border: none; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 0.85em; text-align: center;">
+                    View Recipe
+                </a>
+            {% endif %}
+            
+            {% if difficulty %}
+            <span class="badge bg-{{ difficulty.class }}" style="font-size: 0.85em; padding: 5px 10px; border-radius: 4px;">
+                {{ difficulty.level }}
+            </span>
+            {% else %}
+            {% with calculated_difficulty=recipe|get_difficulty %}
+            <span class="badge bg-{{ calculated_difficulty.class }}" style="font-size: 0.85em; padding: 5px 10px; border-radius: 4px;">
+                {{ calculated_difficulty.level }}
+            </span>
+            {% endwith %}
+            {% endif %}
         </div>
     </div>
 </div>

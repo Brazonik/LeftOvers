@@ -2,58 +2,86 @@
 {% load recipe_filters %}
 
 {% block content %}
-<div style="background-color: #fff3e0; min-height: calc(100vh - 56px); padding: 30px 20px;">
-    <div style="max-width: 1200px; margin: 0 auto;">
-        <!-- Page Header -->
-        <div style="background-color: white; padding: 25px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h1 style="color: #ff6347; margin: 0; font-size: 2.2em;">My Purchased Recipes</h1>
-                <a href="{% url 'recipe-shop' %}" style="color: white; background-color: #ff6347; text-decoration: none; font-weight: bold; padding: 8px 15px; border-radius: 5px;">
-                    Back to Shop
-                </a>
-            </div>
-        </div>
-
-        <!-- Purchased Recipes -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+<div style="max-width: 1200px; margin: 40px auto; padding: 20px;">
+    <h1 style="color: #ff6347; margin-bottom: 30px; font-weight: bold;">My Purchased Recipes</h1>
+    
+    <!-- Purchased Recipes -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+        {% if purchases %}
             {% for purchase in purchases %}
-                <div style="background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                <div style="background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); height: 100%;">
                     <!-- Recipe Image -->
-                    {% if purchase.recipe.image %}
-    <img src="{{ purchase.recipe.image }}" alt="{{ purchase.recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
-{% else %}
-    <div style="color: #aaa; font-style: italic;">No image available</div>
-{% endif %}
+                    <div style="height: 200px; overflow: hidden;">
+                        {% if purchase.recipe.image %}
+                            {% if purchase.recipe.image.url and not purchase.recipe.image|stringformat:"s"|startswith:"http" %}
+                                <img src="{{ purchase.recipe.image.url }}" alt="{{ purchase.recipe.title }}"
+                                    style="width: 100%; height: 100%; object-fit: cover;">
+                            {% else %}
+                                {% if purchase.recipe.image|stringformat:"s"|startswith:"http" %}
+                                    <img src="{{ purchase.recipe.image }}" alt="{{ purchase.recipe.title }}"
+                                        style="width: 100%; height: 100%; object-fit: cover;">
+                                {% else %}
+                                    <img src="/media/{{ purchase.recipe.image }}" alt="{{ purchase.recipe.title }}"
+                                        style="width: 100%; height: 100%; object-fit: cover;">
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            <div style="height: 100%; display: flex; align-items: center; justify-content: center; background-color: #f5f5f5;">
+                                <i class="fas fa-utensils" style="font-size: 3em; color: #ccc;"></i>
+                            </div>
+                        {% endif %}
+                    </div>
                     
-                    <!-- Recipe Details -->
-                    <div style="padding: 15px;">
-                        <h3 style="font-size: 1.3em; margin-bottom: 10px; color: #333;">{{ purchase.recipe.title }}</h3>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <div style="background-color: #4CAF50; color: white; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 0.8em;">
-                                Purchased
+                    <!-- Recipe Content -->
+                    <div style="padding: 20px;">
+                        <h5 style="font-weight: bold; margin-bottom: 15px; color: #ff6347;">{{ purchase.recipe.title }}</h5>
+                        
+                        <!-- Recipe Info -->
+                        <div style="margin-bottom: 15px;">
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <div>
+                                    <span style="font-weight: bold; color: #ff6347; font-size: 0.85em;">PURCHASED:</span><br>
+                                    <span>{{ purchase.purchased_at|date:"M d, Y" }}</span>
+                                </div>
+                                <div>
+                                    <span style="font-weight: bold; color: #ff6347; font-size: 0.85em;">COST:</span><br>
+                                    <span>{{ purchase.points_spent }} points</span>
+                                </div>
                             </div>
-                            <div style="font-size: 0.9em; color: #888;">
-                                {{ purchase.purchased_at|date:"F d, Y" }}
-                            </div>
-                        </div>
-                        <div style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
-                            You spent <strong>{{ purchase.points_spent }}</strong> points on this recipe
                         </div>
                         
-                        <a href="{% url 'purchased-recipe-detail' purchase.recipe.id %}" style="display: block; padding: 10px; text-align: center; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        <!-- Recipe Difficulty Badge - using get_difficulty filter -->
+                        {% with difficulty=purchase.recipe|get_difficulty %}
+                            <span style="display: inline-block; background-color: var(--bs-{{ difficulty.class }}); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">
+                                <i class="fas {{ difficulty.icon }}" style="margin-right: 5px;"></i> {{ difficulty.level }}
+                            </span>
+                        {% endwith %}
+                    </div>
+                    
+                    <!-- Card Footer -->
+                    <div style="padding: 15px 20px 20px; border-top: 1px solid #eee; margin-top: 10px;">
+                        <a href="{% url 'purchased-recipe-detail' purchase.recipe.id %}" 
+                           style="display: block; text-align: center; padding: 12px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; transition: background-color 0.2s;">
                             View Recipe
                         </a>
                     </div>
                 </div>
-            {% empty %}
-                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
-                    <p style="color: #666; font-size: 1.2em;">You haven't purchased any recipes yet.</p>
-                    <a href="{% url 'recipe-shop' %}" style="display: inline-block; margin-top: 15px; color: white; background-color: #ff6347; text-decoration: none; font-weight: bold; padding: 8px 15px; border-radius: 5px;">
-                        Go to Shop
-                    </a>
-                </div>
             {% endfor %}
-        </div>
+        {% else %}
+            <div style="grid-column: 1 / -1; background-color: #fff3e0; border-left: 4px solid #ff6347; padding: 15px; border-radius: 4px;">
+                <p style="margin: 0; color: #666;">You haven't purchased any recipes yet. Try purchasing a random recipe or check out the Recipe Shop!</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Shop Link -->
+    <div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); padding: 30px; margin-top: 40px; text-align: center;">
+        <h3 style="color: #ff6347; margin-bottom: 15px;">Looking for more recipes?</h3>
+        <p style="color: #666; margin-bottom: 20px;">Check out the Recipe Shop for more premium recipes you can purchase with your points.</p>
+        <a href="{% url 'recipe-shop' %}" 
+           style="display: inline-block; padding: 12px 30px; background-color: #ff6347; color: white; text-decoration: none; border-radius: 30px; font-weight: bold;">
+            <i class="fas fa-shopping-basket" style="margin-right: 5px;"></i> Visit Recipe Shop
+        </a>
     </div>
 </div>
 {% endblock content %}

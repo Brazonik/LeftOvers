@@ -14,21 +14,20 @@ def normalize_ingredient_name(name):
     if not name:
         return ""
         
-    # Convert to lowercase and strip whitespace
+    #convert to lowercase and strip whitespace
     name = name.lower().strip()
     
-    # Remove quotes if present
+    #remove quotes if present
     name = name.replace("'", "").replace('"', "")
     
-    # Remove quantities (numbers at the beginning)
-    name = re.sub(r'^\d+[\s/]*', '', name)  # Remove "2 " or "2/3 "
-    name = re.sub(r'^\d+\.\d+\s*', '', name)  # Remove "2.5 "
-    name = re.sub(r'^\d+\s*-\s*\d+\s*', '', name)  # Remove "2-3 "
+    #remove quantities =
+    name = re.sub(r'^\d+[\s/]*', '', name)  
+    name = re.sub(r'^\d+\.\d+\s*', '', name)  
+    name = re.sub(r'^\d+\s*-\s*\d+\s*', '', name)  
     
-    # Remove fractions
-    name = re.sub(r'\b\d+/\d+\b', '', name)  # Remove "1/2"
+    #emove fractions
+    name = re.sub(r'\b\d+/\d+\b', '', name)  
     
-    # Expanded list of measurements to remove
     measurements = [
         'cup', 'cups', 'tbsp', 'tablespoon', 'tablespoons', 'tsp', 'teaspoon', 'teaspoons',
         'oz', 'ounce', 'ounces', 'pound', 'pounds', 'lb', 'lbs', 'g', 'gram', 'grams',
@@ -39,7 +38,6 @@ def normalize_ingredient_name(name):
     measurement_pattern = r'\b(' + '|'.join(measurements) + r')\b\s*(of\s+)?'
     name = re.sub(measurement_pattern, '', name, flags=re.IGNORECASE)
     
-    # Expanded list of preparation adjectives
     prep_adjectives = [
         'fresh', 'frozen', 'dried', 'canned', 'chopped', 'minced', 'sliced', 'diced',
         'grated', 'shredded', 'ground', 'crushed', 'whole', 'halved', 'quartered',
@@ -54,16 +52,16 @@ def normalize_ingredient_name(name):
     for adj in prep_adjectives:
         name = re.sub(r'\b' + adj + r'\b', '', name, flags=re.IGNORECASE)
     
-    # Remove common prefixes like "of", "for"
+    #remove common prefixes like "of", "for"
     name = re.sub(r'\bof\s+', '', name)
     name = re.sub(r'\bfor\s+', '', name)
     
-    # Remove "to taste" and similar phrases
+    #remove "to taste" and similar phrases
     name = re.sub(r'\bto taste\b', '', name)
     name = re.sub(r'\bas needed\b', '', name)
     name = re.sub(r'\boptional\b', '', name)
     
-    # Handle common singular/plural forms 
+    #handle common singular/plural forms 
     common_plurals = [
         ('chicken', 'chickens'), ('onion', 'onions'), ('tomato', 'tomatoes'), ('potato', 'potatoes'),
         ('carrot', 'carrots'), ('egg', 'eggs'), ('pepper', 'peppers'), ('rice', 'rices'),
@@ -76,7 +74,7 @@ def normalize_ingredient_name(name):
     for singular, plural in common_plurals:
         name = re.sub(r'\b' + plural + r'\b', singular, name, flags=re.IGNORECASE)
     
-    # Handle common ingredient synonyms and substitutes
+    #handle common ingredient synonyms and substitutes
     synonyms = [
         ('bell pepper', 'pepper'),
         ('red pepper', 'pepper'),
@@ -119,14 +117,13 @@ def normalize_ingredient_name(name):
     for primary, normalized in synonyms:
         name = re.sub(r'\b' + primary + r'\b', normalized, name, flags=re.IGNORECASE)
     
-    # Remove parenthetical content
+    #remove parenthetical content
     name = re.sub(r'\(.*?\)', '', name)
     
-    # Clean up whitespace and punctuation
+    #clean up whitespace and punctuation
     name = re.sub(r'\s+', ' ', name).strip()
     name = name.strip('.,;:-')
     
-    # Handle empty result after cleaning
     if not name:
         return "unknown ingredient"
     
@@ -135,7 +132,7 @@ def normalize_ingredient_name(name):
 
 def get_ingredient_category(ingredient):
     
-    # Determines which category an ingredient belongs to for substitution purposes
+    #determines which category an ingredient belongs to for substitution purposes
 
     normalized = normalize_ingredient_name(ingredient)
     
@@ -205,8 +202,8 @@ def get_ingredient_category(ingredient):
 
 def check_substitution_compatibility(ingredient1, ingredient2):
     
-    # Checks if two ingredients can be substituted for each other
-    # Returns True if they are in the same category
+    #checks if two ingredients can be substituted for each other
+    #returns True if they are in the same category
     
     cat1 = get_ingredient_category(ingredient1)
     cat2 = get_ingredient_category(ingredient2)
@@ -236,7 +233,7 @@ def match_ingredients(user_ingredients, recipe_ingredients):
     normalized_user_ingredients = [normalize_ingredient_name(ing) for ing in user_ingredients]
     normalized_recipe_ingredients = [normalize_ingredient_name(ing) for ing in recipe_ingredients]
     
-    # Initialize match tracking
+    #initialize match tracking
     matching_ingredients = []
     missing_ingredients = []
     matched_recipe_indices = set()
@@ -244,7 +241,7 @@ def match_ingredients(user_ingredients, recipe_ingredients):
     
     print(f"DEBUG - Normalized user ingredients: {normalized_user_ingredients}")
     
-    # Pass 1: Direct matches
+    #direct matches
     for i, recipe_ing in enumerate(normalized_recipe_ingredients):
         if not recipe_ing or recipe_ing == 'unknown ingredient':
             continue
@@ -253,7 +250,7 @@ def match_ingredients(user_ingredients, recipe_ingredients):
             if not user_ing or user_ing == 'unknown ingredient':
                 continue
                 
-            # Exact match or one is contained in the other
+            #exact match or one is contained in the other
             if recipe_ing == user_ing or (
                 len(user_ing) > 3 and (
                     recipe_ing.startswith(user_ing + ' ') or
@@ -266,7 +263,7 @@ def match_ingredients(user_ingredients, recipe_ingredients):
                 used_user_indices.add(j)
                 break
     
-    # Pass 2: Category/substitution matches for remaining ingredients
+    #category/substitution matches for remaining ingredients
     for i, recipe_ing in enumerate(normalized_recipe_ingredients):
         if i in matched_recipe_indices or not recipe_ing or recipe_ing == 'unknown ingredient':
             continue
@@ -281,18 +278,15 @@ def match_ingredients(user_ingredients, recipe_ingredients):
                 
             user_category = get_ingredient_category(user_ing)
             if user_category and user_category == recipe_category:
-                # Add with substitution note
                 matching_ingredients.append(f"{recipe_ingredients[i]} (using {user_ingredients[j]})")
                 matched_recipe_indices.add(i)
                 used_user_indices.add(j)
                 break
     
-    # Identify missing ingredients
     for i, recipe_ing in enumerate(recipe_ingredients):
         if i not in matched_recipe_indices:
             missing_ingredients.append(recipe_ing)
     
-    # Calculate match statistics
     match_percentage = 0
     if recipe_ingredients:
         match_percentage = (len(matched_recipe_indices) / len(recipe_ingredients)) * 100
@@ -303,7 +297,6 @@ def match_ingredients(user_ingredients, recipe_ingredients):
     
     is_perfect_match = len(missing_ingredients) == 0
     
-    # Debug output
     print(f"DEBUG - Match results for recipe:")
     print(f"  Match %: {match_percentage:.1f}% ({len(matched_recipe_indices)}/{len(recipe_ingredients)} ingredients)")
     print(f"  User ingredient usage: {user_ingredient_usage:.1f}% ({len(used_user_indices)}/{len(user_ingredients)} user ingredients)")

@@ -10,7 +10,7 @@ def get_item(dictionary, key):
 
 @register.filter
 def has_new_unlocked_recipes(user):
-    #Check if a user has any unviewed unlocked recipes
+    #check if a user has any unviewed unlocked recipes
     if not user or not user.is_authenticated:
         return False
     return user.unlocked_recipes.filter(viewed=False).exists()

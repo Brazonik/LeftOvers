@@ -10,7 +10,6 @@ urlpatterns = [
     path('recipe/<int:pk>/delete/', views.RecipeDeleteView.as_view(), name="recipes-delete"),
     path('about/', views.about, name="recipes-about"),
     path('recipe/<int:pk>/save/', views.toggle_save_recipe, name="recipe-save"),
-    #path('recipe/<int:pk>/try/', views.mark_recipe_as_tried, name='mark-recipe-tried'),
     
     path('shopping-list/', views.shopping_list, name="shopping_list"),  
     path('add-item/', views.add_item, name="add_item"),  
@@ -41,4 +40,14 @@ urlpatterns = [
     path('purchase-recipe/<int:recipe_id>/', views.purchase_recipe, name='purchase-recipe'),
     path('purchased-recipes/', views.purchased_recipes, name='purchased-recipes'),
     path('purchased-recipe/<int:recipe_id>/', views.purchased_recipe_detail, name='purchased-recipe-detail'),
+    path('submit-recipe/', views.submit_recipe_for_review, name='submit-recipe-for-review'),
+    path('my-submissions/', views.user_submissions, name='user-submissions'),
+    path('add-recipe-to-shopping-list/<int:recipe_id>/', views.add_recipe_to_shopping_list, name='add-recipe-to-shopping-list'),
+    path('mark-recipe-tried/<int:recipe_id>/', views.mark_recipe_tried, name='mark-recipe-tried'),
+    path('purchase-random-recipe/', views.purchase_random_recipe, name='purchase-random-recipe'),
+    path('purchase-random-recipe/<str:difficulty>/', views.purchase_random_recipe, name='purchase-random-recipe-difficulty'),
+    path('purchase-random-recipe/', views.purchase_random_recipe, name='purchase-random-recipe'),
+    path('clear-shopping-list/', views.clear_shopping_list, name='clear_shopping_list'),
+    path('track-shopping-list-items/', views.track_shopping_list_items, name='track_shopping_list_items'),
+    path('mark-used/<int:item_id>/', views.mark_used, name='mark_used'),
 ]

@@ -28,7 +28,6 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px;">
         {% for unlocked in unlocked_recipes %}
         <div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease; height: 100%;">
-            <!-- Recipe Image -->
             {% if unlocked.recipe.image %}
             <div style="height: 200px; overflow: hidden;">
                 <img src="{{ unlocked.recipe.image }}" alt="{{ unlocked.recipe.title }}" 

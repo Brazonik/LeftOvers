@@ -1,0 +1,65 @@
+{% extends 'recipes/base.html' %}
+{% load recipe_filters %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 40px auto; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h1 style="color: #ff6347; margin: 0;">My Recipe Submissions</h1>
+        <a href="{% url 'submit-recipe-for-review' %}" style="display: inline-block; padding: 12px 24px; background-color: #ff6347; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+            BackTo Recipe Submission
+        </a>
+    </div>
+    
+    {% if submitted_recipes %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+            {% for recipe in submitted_recipes %}
+                <div style="background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                    <!-- Recipe Image -->
+                    <div style="width: 100%; height: 180px; background-color: #f5f5f5; display: flex; justify-content: center; align-items: center;">
+                        {% if recipe.image %}
+                            <img src="{{ recipe.image.url }}" alt="{{ recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% elif recipe|has_image %}
+                            <img src="{{ recipe|get_primary_image }}" alt="{{ recipe.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <div style="color: #aaa; font-style: italic;">No image available</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Recipe Details -->
+                    <div style="padding: 15px;">
+                        <h3 style="font-size: 1.3em; margin-bottom: 10px; color: #333;">{{ recipe.title }}</h3>
+                        
+                        <!-- Status Badge -->
+                        <div style="margin-bottom: 15px;">
+                            {% if recipe.status == 'submitted' %}
+                                <span style="background-color: #ffc107; color: #212529; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">Under Review</span>
+                            {% elif recipe.status == 'approved' %}
+                                <span style="background-color: #28a745; color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">Approved</span>
+                            {% elif recipe.status == 'premium' %}
+                                <span style="background-color: #007bff; color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">Premium Recipe</span>
+                            {% elif recipe.status == 'rejected' %}
+                                <span style="background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">Rejected</span>
+                            {% else %}
+                                <span style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">{{ recipe.status|title }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+                            Submitted on {{ recipe.created_at|date:"F d, Y" }}
+                        </div>
+                        
+                        <a href="{% url 'recipes-detail' recipe.id %}" style="display: block; padding: 10px; text-align: center; background-color: #ff6347; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                            View Recipe
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; text-align: center;">
+            <p style="color: #6c757d; font-size: 1.1em; margin-bottom: 20px;">You haven't submitted any recipes yet.</p>
+            <p>Share your culinary creations with the community! High-quality recipes may be featured in our premium shop.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

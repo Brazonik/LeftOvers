@@ -7,7 +7,17 @@
 {% block content %}
 
 <div style="max-width: 800px; margin: 40px auto; padding: 20px; background-color: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
-    <h1>{{ object|get_title }}</h1>
+    <!-- Recipe Title with Difficulty Badge -->
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <h1 style="margin: 0; flex-grow: 1;">{{ object|get_title }}</h1>
+        
+        {% with difficulty=object|get_difficulty %}
+        <span class="badge bg-{{ difficulty.class }}" 
+              style="font-size: 1em; padding: 8px 15px; border-radius: 20px;">
+            {{ difficulty.level }}
+        </span>
+        {% endwith %}
+    </div>
 
     <!-- Recipe Image, uses image if available if not uses placeholder image -->
     <div style="margin-bottom: 30px; text-align: center;">
@@ -18,13 +28,12 @@
             <img src="{{ object|get_primary_image }}" alt="{{ object|get_title }}" 
                  style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
         {% else %}
-            <!-- Placeholder if no image -->
             <img src="https://via.placeholder.com/800x400?text=No+Image+Available" alt="Recipe" 
                  style="max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: cover;">
         {% endif %}
     </div>
 
-    <!-- Recipe meta info, prep time, cook timw, servings, authot and cfeation date -->
+    <!-- Recipe meta info section -->
     <div style="background-color: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div>
@@ -124,8 +133,8 @@
         {% csrf_token %}
     </form>
 
-    <!-- Action buttons, add, tried, update and delete -->
-    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap;">
+    <!-- Recipe Action Buttons -->
+    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap; align-items: center;">
         {% if user.is_authenticated %}
             <a href="#" id="save-recipe" class="btn" data-recipe-id="{{ object.id }}"
                style="display: inline-block; padding: 12px 24px; background-color: white; color: #ff6347; border: 2px solid #ff6347; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
@@ -150,17 +159,16 @@
             </a>
             
             {% if object|has_tried:user %}
-    <button disabled class="btn btn-success"
-           style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
-        ✓ Tried
-    </button>
-{% else %}
-    <a href="{% url 'recipe-try-confirm' object.id %}" class="btn btn-success"
-       style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
-        Try Recipe
-    </a>
-{% endif %}
-            
+            <button disabled class="btn btn-success"
+                   style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+                ✓ Tried
+            </button>
+            {% else %}
+            <a href="{% url 'recipe-try-confirm' object.id %}" class="btn btn-success"
+               style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; text-decoration: none; border-radius: 30px; font-weight: bold; text-align: center;">
+                Try Recipe
+            </a>
+            {% endif %}
         {% endif %}
         
         <a href="javascript:history.back()" class="btn"
@@ -171,7 +179,7 @@
     
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Add to Shopping List functionality
+    //add to Shopping List functionality
     const addToShoppingListBtn = document.getElementById('add-to-shopping-list');
     
     if (addToShoppingListBtn) {
@@ -213,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Save Recipe functionality
+    //save Recipe functionality
     const saveRecipeBtn = document.getElementById('save-recipe');
     
     if (saveRecipeBtn) {
